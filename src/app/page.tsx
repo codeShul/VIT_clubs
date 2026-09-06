@@ -5,7 +5,7 @@ import { ArrowRight, Calendar, Users, Zap, Trophy, ChevronDown, ChevronUp, Chevr
 import { Button } from '@/components/ui/button';
 import { ClubExplorer } from '@/components/shared/ClubExplorer';
 import Image from 'next/image';
-
+import Link from 'next/link';
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
@@ -190,12 +190,16 @@ export default function LandingPage() {
                 Explore 50+ clubs, participate in exciting events and build memories that last a lifetime.
               </motion.p>
               <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="h-12 px-8 text-base bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg shadow-blue-500/30">
-                  Explore Clubs <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button size="lg" variant="outline" className="h-12 px-8 text-base border-blue-200 dark:border-white/20 bg-white dark:bg-transparent hover:bg-blue-50 dark:hover:bg-white/5 text-blue-900 dark:text-white">
-                  View Events <Calendar className="ml-2 h-4 w-4" />
-                </Button>
+                <Link href="/clubs">
+                  <Button size="lg" className="h-12 px-8 text-base bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 shadow-lg shadow-blue-500/30">
+                    Explore Clubs <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/events">
+                  <Button size="lg" variant="outline" className="h-12 px-8 text-base border-blue-200 dark:border-white/20 bg-white dark:bg-transparent hover:bg-blue-50 dark:hover:bg-white/5 text-blue-900 dark:text-white">
+                    View Events <Calendar className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </motion.div>
             </motion.div>
 
@@ -248,9 +252,11 @@ export default function LandingPage() {
             <div className="w-1.5 h-5 bg-blue-600 dark:bg-cyan-500 rounded-full" />
             EXPLORE CLUB DOMAINS
           </div>
-          <Button variant="link" className="text-blue-600 dark:text-cyan-400 hover:text-blue-700 dark:hover:text-cyan-300">
-            View All Clubs <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
+          <Link href="/clubs">
+            <Button variant="link" className="text-blue-600 dark:text-cyan-400 hover:text-blue-700 dark:hover:text-cyan-300">
+              View All Clubs <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">

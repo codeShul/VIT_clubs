@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum EventStatus {
+  DRAFT
+  PENDING
+  VERIFYING
+  APPROVED
+  REJECTED
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MembershipRole {
+  MEMBER
+  CORE_TEAM
+  LEAD
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  ATTENDED
+  CANCELLED
+}
+
+enum ConsentFormStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(USER)
+  regNo     String
+  year      String
+  branch    String
+  avatarUrl String
+  password  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       Membership[]
+  registrations     Registration[]
+  notifications     Notification[]
+  issuedPermissions PermissionLetter[] @relation("SuperAdminIssuer")
+  follows           ClubFollow[]
+  coordinatedClubs  Club[]             @relation("FacultyCoordinator")
+}
+
+model Club {
+  id                      String   @id @default(uuid())
+  name                    String   @unique
+  slug                    String   @unique
+  description             String
+  vision                  String
+  domain                  String
+  logoUrl                 String
+  coverUrl                String
+  facultyCoordinatorId    String
+  facultyCoordinator      User     @relation("FacultyCoordinator", fields: [facultyCoordinatorId], references: [id])
+  isFeatured              Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  events    Event[]
+  members   Membership[]
+  followers ClubFollow[]
+  media     Media[]
+}
+
+model ClubFollow {
+  id         String   @id @default(uuid())
+  userId     String
+  clubId     String
+  followedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  club Club @relation(fields: [clubId], references: [id])
+
+  @@unique([userId, clubId])
+}
+
+model Membership {
+  id          String           @id @default(uuid())
+  userId      String
+  clubId      String
+  role        MembershipRole   @default(MEMBER)
+  status      MembershipStatus @default(PENDING)
+  requestedAt DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  club Club @relation(fields: [clubId], references: [id])
+
+  @@unique([userId, clubId])
+}
+
+model Event {
+  id             String      @id @default(uuid())
+  title          String
+  description    String
+  date           DateTime
+  time           String
+  venue          String
+  bannerImageUrl String
+  squareImageUrl String
+  capacity       Int
+  status         EventStatus @default(DRAFT)
+  clubId         String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  club             Club               @relation(fields: [clubId], references: [id])
+  registrations    Registration[]
+  permissionLetter PermissionLetter[]
+  media            Media[]
+}
+
+model Media {
+  id         String   @id @default(uuid())
+  ownerType  String // 'club' or 'event'
+  clubId     String?
+  eventId    String?
+  url        String
+  caption    String?
+  sortOrder  Int      @default(0)
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  club  Club?  @relation(fields: [clubId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+}
+
+model Registration {
+  id           String             @id @default(uuid())
+  userId       String
+  eventId      String
+  status       RegistrationStatus @default(REGISTERED)
+  registeredAt DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+}
+
+model PermissionLetter {
+  id        String    @id @default(uuid())
+  eventId   String
+  issuedById String
+  token     String    @unique
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime?
+
+  event        Event         @relation(fields: [eventId], references: [id])
+  issuedBy     User          @relation("SuperAdminIssuer", fields: [issuedById], references: [id])
+  consentForms ConsentForm[]
+}
+
+model ConsentForm {
+  id                 String            @id @default(uuid())
+  permissionLetterId String
+  fileUrl            String
+  verificationStatus ConsentFormStatus @default(PENDING)
+  isLatest           Boolean           @default(true)
+  uploadedAt         DateTime          @default(now())
+
+  permissionLetter PermissionLetter @relation(fields: [permissionLetterId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String?
+  audience  String
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}

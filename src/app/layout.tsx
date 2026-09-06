@@ -3,6 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/lib/auth-context";
+import { EventsProvider } from "@/lib/events-context";
+import { NotificationsProvider } from "@/lib/notifications-context";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -27,10 +30,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="relative flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-          </div>
+          <AuthProvider>
+            <EventsProvider>
+              <NotificationsProvider>
+                <div className="relative flex min-h-screen flex-col">
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                </div>
+              </NotificationsProvider>
+            </EventsProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

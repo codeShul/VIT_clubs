@@ -21,6 +21,8 @@ export interface Club {
   slug: string;
 }
 
+export type EventStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+
 export interface Event {
   id: string;
   title: string;
@@ -34,6 +36,34 @@ export interface Event {
   capacity: number;
   registeredCount: number;
   tags: string[];
+  status: EventStatus;
+  permissionToken?: string; // set when super admin approves
+}
+
+export interface PermissionLetter {
+  token: string;
+  eventId: string;
+  eventTitle: string;
+  clubName: string;
+  venue: string;
+  date: string;
+  issuedBy: string; // super admin name
+  issuedAt: string; // ISO date
+  revokedAt?: string;
+}
+
+export type MembershipStatus = 'pending' | 'approved' | 'rejected';
+
+export interface MembershipRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRegNo: string;
+  clubId: string;
+  clubName: string;
+  status: MembershipStatus;
+  requestedAt: string;
 }
 
 export const MOCK_DOMAINS: { name: ClubDomain; description: string; icon: string }[] = [
@@ -95,13 +125,15 @@ export const MOCK_EVENTS: Event[] = [
     clubId: 'club-5',
     clubName: 'GDSC',
     description: 'A 48-hour national-level hackathon. Build solutions for real-world problems involving AI, Web3, and sustainability.',
-    date: '2024-08-15',
+    date: '2026-09-15',
     time: '18:00',
     venue: 'Main Auditorium',
     imageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=800&h=400',
     capacity: 500,
     registeredCount: 412,
     tags: ['Hackathon', 'AI', 'Web3'],
+    status: 'approved',
+    permissionToken: 'VITC-2026-XK9QMP',
   },
   {
     id: 'event-2',
@@ -109,13 +141,14 @@ export const MOCK_EVENTS: Event[] = [
     clubId: 'club-2',
     clubName: 'EDC',
     description: 'Learn how to craft the perfect pitch deck to secure seed funding.',
-    date: '2024-08-20',
+    date: '2026-09-20',
     time: '14:00',
     venue: 'Seminar Hall B',
     imageUrl: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800&h=400',
     capacity: 100,
     registeredCount: 100,
     tags: ['Workshop', 'Startups', 'Pitching'],
+    status: 'pending',
   },
   {
     id: 'event-3',
@@ -123,12 +156,138 @@ export const MOCK_EVENTS: Event[] = [
     clubId: 'club-13',
     clubName: 'Aaroh',
     description: 'An open-air acoustic performance featuring classical masterpieces and modern hits.',
-    date: '2024-08-24',
+    date: '2026-09-24',
     time: '19:30',
     venue: 'Open Air Theatre',
     imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800&h=400',
     capacity: 1000,
     registeredCount: 650,
     tags: ['Music', 'Concert', 'Acoustic'],
-  }
+    status: 'draft',
+  },
+  {
+    id: 'event-4',
+    title: 'AR/VR Showcase Night',
+    clubId: 'club-21',
+    clubName: 'SIG Reality Spectra',
+    description: 'Experience cutting-edge augmented and virtual reality demos built by students.',
+    date: '2026-10-05',
+    time: '17:00',
+    venue: 'Innovation Lab',
+    imageUrl: 'https://images.unsplash.com/photo-1617802690992-15d93263d3a9?auto=format&fit=crop&q=80&w=800&h=400',
+    capacity: 200,
+    registeredCount: 87,
+    tags: ['AR', 'VR', 'Tech'],
+    status: 'pending',
+  },
 ];
+
+// ─── Mock Users ──────────────────────────────────────────────────────────────
+
+import type { MockUser } from './auth-context';
+
+export const MOCK_USERS: MockUser[] = [
+  {
+    id: 'user-1',
+    name: 'Ansh Rathore',
+    email: 'ansh@vitpune.edu.in',
+    role: 'super-admin',
+    regNo: 'VIT2024SA001',
+    year: '3rd Year',
+    branch: 'Computer Engineering',
+    bio: 'Platform administrator for VIT CLUBS.',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ansh',
+  },
+  {
+    id: 'user-2',
+    name: 'Riya Desai',
+    email: 'riya@vitpune.edu.in',
+    role: 'admin',
+    clubId: 'club-5',
+    clubName: 'GDSC',
+    regNo: 'VIT2024CS042',
+    year: '3rd Year',
+    branch: 'Computer Science',
+    bio: 'Club lead at GDSC VIT Pune. Passionate about developer communities.',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Riya',
+  },
+  {
+    id: 'user-3',
+    name: 'Priya Kapoor',
+    email: 'priya@vitpune.edu.in',
+    role: 'admin',
+    clubId: 'club-2',
+    clubName: 'EDC',
+    regNo: 'VIT2024EC018',
+    year: '4th Year',
+    branch: 'Electronics Engineering',
+    bio: 'Entrepreneurship enthusiast and EDC chapter head.',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya',
+  },
+  {
+    id: 'user-4',
+    name: 'Aryan Mehta',
+    email: 'aryan@vitpune.edu.in',
+    role: 'user',
+    regNo: 'VIT2025ME101',
+    year: '2nd Year',
+    branch: 'Mechanical Engineering',
+    bio: 'Love robotics and astronomy.',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aryan',
+  },
+  {
+    id: 'user-5',
+    name: 'Sneha Iyer',
+    email: 'sneha@vitpune.edu.in',
+    role: 'user',
+    regNo: 'VIT2025IT077',
+    year: '2nd Year',
+    branch: 'Information Technology',
+    bio: 'Dancer, coder, and perpetual coffee drinker.',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sneha',
+  },
+];
+
+// ─── Mock Membership Requests ─────────────────────────────────────────────────
+
+export const MOCK_MEMBERSHIPS: MembershipRequest[] = [
+  { id: 'mem-1', userId: 'user-4', userName: 'Aryan Mehta', userEmail: 'aryan@vitpune.edu.in', userRegNo: 'VIT2025ME101', clubId: 'club-5', clubName: 'GDSC', status: 'pending', requestedAt: '2026-08-10' },
+  { id: 'mem-2', userId: 'user-5', userName: 'Sneha Iyer', userEmail: 'sneha@vitpune.edu.in', userRegNo: 'VIT2025IT077', clubId: 'club-5', clubName: 'GDSC', status: 'approved', requestedAt: '2026-08-08' },
+  { id: 'mem-3', userId: 'user-4', userName: 'Aryan Mehta', userEmail: 'aryan@vitpune.edu.in', userRegNo: 'VIT2025ME101', clubId: 'club-2', clubName: 'EDC', status: 'approved', requestedAt: '2026-08-01' },
+  { id: 'mem-4', userId: 'user-5', userName: 'Sneha Iyer', userEmail: 'sneha@vitpune.edu.in', userRegNo: 'VIT2025IT077', clubId: 'club-2', clubName: 'EDC', status: 'pending', requestedAt: '2026-08-11' },
+];
+
+// ─── Mock Permission Letters ──────────────────────────────────────────────────
+
+export const MOCK_PERMISSION_LETTERS: PermissionLetter[] = [
+  {
+    token: 'VITC-2026-XK9QMP',
+    eventId: 'event-1',
+    eventTitle: 'HackTheFuture 2026',
+    clubName: 'GDSC',
+    venue: 'Main Auditorium',
+    date: '2026-09-15',
+    issuedBy: 'Ansh Rathore',
+    issuedAt: '2026-08-01T10:30:00Z',
+  },
+];
+
+// ─── Mock Registrations ───────────────────────────────────────────────────────
+
+export interface EventRegistration {
+  id: string;
+  userId: string;
+  eventId: string;
+  eventTitle: string;
+  clubName: string;
+  date: string;
+  venue: string;
+  registeredAt: string;
+}
+
+export const MOCK_REGISTRATIONS: EventRegistration[] = [
+  { id: 'reg-1', userId: 'user-4', eventId: 'event-1', eventTitle: 'HackTheFuture 2026', clubName: 'GDSC', date: '2026-09-15', venue: 'Main Auditorium', registeredAt: '2026-08-05' },
+  { id: 'reg-2', userId: 'user-5', eventId: 'event-1', eventTitle: 'HackTheFuture 2026', clubName: 'GDSC', date: '2026-09-15', venue: 'Main Auditorium', registeredAt: '2026-08-06' },
+  { id: 'reg-3', userId: 'user-4', eventId: 'event-3', eventTitle: 'Symphony Under the Stars', clubName: 'Aaroh', date: '2026-09-24', venue: 'Open Air Theatre', registeredAt: '2026-08-09' },
+];
+

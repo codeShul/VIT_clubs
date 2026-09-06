@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Arr
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MOCK_EVENTS } from '@/lib/mock-data';
+import { useEvents } from '@/lib/events-context';
 import Link from 'next/link';
 
 // Helper to get days in a month
@@ -22,9 +22,11 @@ function getStartDayOfMonth(year: number, month: number) {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarPage() {
-  // Let's default to August 2024 since our mock data has events in August
-  const [currentDate, setCurrentDate] = React.useState(new Date(2024, 7, 1));
-  const [selectedDate, setSelectedDate] = React.useState(new Date(2024, 7, 24));
+  const { events } = useEvents();
+  
+  // Default to the current date
+  const [currentDate, setCurrentDate] = React.useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [view, setView] = React.useState('Month');
 
   const year = currentDate.getFullYear();
@@ -33,17 +35,11 @@ export default function CalendarPage() {
   const daysInMonth = getDaysInMonth(year, month);
   const startDay = getStartDayOfMonth(year, month);
 
-  // Parse mock events to match against dates
-  const parsedEvents = MOCK_EVENTS.map(event => {
-    // Basic parser for "DD MMM" format e.g. "20 AUG" or "24 AUG"
-    const parts = event.date.split(' ');
-    const day = parseInt(parts[0], 10);
-    const monthStr = parts[1];
-    const monthIndex = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'].indexOf(monthStr);
-    
+  // Parse events to match against dates. Only show approved events on the public calendar.
+  const parsedEvents = events.filter(e => (e.status as string) === 'APPROVED').map(event => {
     return {
       ...event,
-      parsedDate: new Date(2024, monthIndex, day)
+      parsedDate: new Date(event.date)
     };
   });
 
@@ -202,31 +198,30 @@ export default function CalendarPage() {
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ delay: i * 0.1 }}
                     >
-                      <Card className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-cyan-500/50 hover:shadow-md shadow-sm dark:shadow-none transition-all group">
-                        <CardContent className="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                          <div className="flex flex-col items-center justify-center min-w-[100px] py-2 px-4 rounded-xl bg-blue-50 dark:bg-white/5 border border-blue-100 dark:border-white/10 text-center">
-                            <span className="text-sm font-bold text-blue-700 dark:text-cyan-400">{event.time}</span>
-                            <span className="text-xs text-blue-600/70 dark:text-gray-500 mt-1 uppercase tracking-widest font-semibold">START</span>
-                          </div>
-                          
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="bg-blue-100 dark:bg-cyan-500/10 text-blue-700 dark:text-cyan-400 hover:bg-blue-200 dark:hover:bg-cyan-500/20 border-0">{event.clubName}</Badge>
-                              {event.tags.map(tag => (
-                                <Badge key={tag} variant="outline" className="border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-400 bg-white dark:bg-transparent">{tag}</Badge>
-                              ))}
+                      <Link href={`/events/${event.id}`} className="block group">
+                        <Card className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-cyan-500/50 hover:shadow-md shadow-sm dark:shadow-none transition-all cursor-pointer">
+                          <CardContent className="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
+                            <div className="flex flex-col items-center justify-center min-w-[100px] py-2 px-4 rounded-xl bg-blue-50 dark:bg-white/5 border border-blue-100 dark:border-white/10 text-center">
+                              <span className="text-sm font-bold text-blue-700 dark:text-cyan-400">{event.time}</span>
+                              <span className="text-xs text-blue-600/70 dark:text-gray-500 mt-1 uppercase tracking-widest font-semibold">START</span>
                             </div>
-                            <h4 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition-colors">{event.title}</h4>
-                            <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-gray-400 font-medium">
-                              <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-slate-400 dark:text-gray-500" /> {event.venue}</span>
+                            
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="bg-blue-100 dark:bg-cyan-500/10 text-blue-700 dark:text-cyan-400 hover:bg-blue-200 dark:hover:bg-cyan-500/20 border-0">{event.club?.name || event.clubName}</Badge>
+                              </div>
+                              <h4 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition-colors">{event.title}</h4>
+                              <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-gray-400 font-medium">
+                                <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-slate-400 dark:text-gray-500" /> {event.venue}</span>
+                              </div>
                             </div>
-                          </div>
-                          
-                          <Link href={`/events/${event.id}`} className="inline-flex items-center justify-center rounded-lg px-3 h-8 text-sm font-medium text-white bg-blue-600 dark:bg-cyan-600 hover:bg-blue-700 dark:hover:bg-cyan-500 shadow-sm dark:shadow-none transition-colors w-full md:w-auto">
-                            Details <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </CardContent>
-                      </Card>
+                            
+                            <div className="inline-flex items-center justify-center rounded-lg px-3 h-8 text-sm font-medium text-white bg-blue-600 dark:bg-cyan-600 group-hover:bg-blue-700 dark:group-hover:bg-cyan-500 shadow-sm dark:shadow-none transition-colors w-full md:w-auto">
+                              Details <ArrowRight className="ml-2 h-4 w-4" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     </motion.div>
                   ))
                 )}
