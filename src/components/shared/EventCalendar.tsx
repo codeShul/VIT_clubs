@@ -35,14 +35,9 @@ export function EventCalendar() {
 
   // Parse mock events to match against dates
   const parsedEvents = MOCK_EVENTS.map(event => {
-    const parts = event.date.split(' ');
-    const day = parseInt(parts[0], 10);
-    const monthStr = parts[1];
-    const monthIndex = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'].indexOf(monthStr);
-    
     return {
       ...event,
-      parsedDate: new Date(2024, monthIndex, day)
+      parsedDate: new Date(event.date)
     };
   });
 
@@ -194,7 +189,7 @@ export function EventCalendar() {
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="bg-blue-100 dark:bg-cyan-500/10 text-blue-700 dark:text-cyan-400 hover:bg-blue-200 dark:hover:bg-cyan-500/20 border-0">{event.clubName}</Badge>
-                          {event.tags.map(tag => (
+                          {event.tags?.map(tag => (
                             <Badge key={tag} variant="outline" className="border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-400 bg-white dark:bg-transparent">{tag}</Badge>
                           ))}
                         </div>

@@ -73,7 +73,7 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
               <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight">{event.title}</h1>
               <div className="flex items-center gap-3 mt-4 text-slate-600 dark:text-gray-400">
                 <span className="text-sm font-medium">Organized by</span>
-                <Badge variant="secondary" className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20">{event.club?.name || 'Club'}</Badge>
+                <Badge variant="secondary" className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20">{event.club?.name || event.clubName || 'Club'}</Badge>
               </div>
             </div>
 

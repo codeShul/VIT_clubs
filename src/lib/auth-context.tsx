@@ -11,8 +11,16 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-  clubId?: string | null;
+  clubId?: string;
+  clubName?: string;
+  avatarUrl?: string;
+  regNo?: string;
+  year?: string | number;
+  branch?: string;
+  bio?: string;
 }
+
+export type MockUser = AuthUser;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -48,7 +56,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         name: session.user.name as string,
         email: session.user.email as string,
         role: frontendRole,
-        clubId: session.user.clubId as string | null
+        clubId: (session.user.clubId as string) || undefined
       };
     }
     return null;

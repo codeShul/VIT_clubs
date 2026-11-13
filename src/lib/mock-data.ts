@@ -27,17 +27,31 @@ export interface Event {
   id: string;
   title: string;
   clubId: string;
-  clubName: string;
+  clubName?: string;
   description: string;
   date: string;
   time: string;
   venue: string;
-  imageUrl: string;
+  imageUrl?: string;
+  bannerImageUrl?: string;
+  squareImageUrl?: string;
   capacity: number;
-  registeredCount: number;
-  tags: string[];
-  status: EventStatus;
+  registeredCount?: number;
+  tags?: string[];
+  status: EventStatus | string;
   permissionToken?: string; // set when super admin approves
+  superAdminId?: string;
+  club?: {
+    id?: string;
+    name?: string;
+    domain?: string;
+    [key: string]: any;
+  };
+  permissionLetter?: any;
+  _count?: {
+    registrations?: number;
+    [key: string]: any;
+  };
 }
 
 export interface PermissionLetter {
