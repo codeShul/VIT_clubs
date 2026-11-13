@@ -1,4 +1,4 @@
-import type { MockUser } from './auth-context';
+import type { AuthUser as MockUser } from './auth-context';
 
 // ─── Role checks ────────────────────────────────────────────────────────────
 
