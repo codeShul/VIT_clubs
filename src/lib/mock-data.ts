@@ -184,7 +184,7 @@ export const MOCK_EVENTS: Event[] = [
 
 // ─── Mock Users ──────────────────────────────────────────────────────────────
 
-import type { MockUser } from './auth-context';
+import type { AuthUser as MockUser } from './auth-context';
 
 export const MOCK_USERS: MockUser[] = [
   {
