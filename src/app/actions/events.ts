@@ -51,15 +51,38 @@ export async function createEvent(data: any) {
   try {
     const validatedData = createEventSchema.parse(data);
 
-    if (session.user.role !== 'SUPER_ADMIN' && session.user.clubId !== validatedData.clubId) {
+    // Resolve clubId: if admin, ensure or default to their assigned club
+    let targetClubId = validatedData.clubId || session.user.clubId;
+    if (!targetClubId && session.user.role === 'ADMIN') {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { coordinatedClubs: true, memberships: { where: { role: { in: ['LEAD', 'CORE_TEAM'] } } } }
+      });
+      if (dbUser?.coordinatedClubs.length) targetClubId = dbUser.coordinatedClubs[0].id;
+      else if (dbUser?.memberships.length) targetClubId = dbUser.memberships[0].clubId;
+    }
+
+    if (!targetClubId) {
+      return { success: false, error: 'Club not found for this user.' };
+    }
+
+    if (session.user.role !== 'SUPER_ADMIN' && session.user.clubId && session.user.clubId !== targetClubId) {
       return { success: false, error: 'Unauthorized: You can only create events for your own club' };
     }
 
-    // Basic date parsing
-    let parsedDate = new Date();
-    if (validatedData.date) {
-      const [year, month, day] = validatedData.date.split('-');
-      parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    // Robust date parsing supporting YYYY-MM-DD, DD-MM-YYYY, or standard Date string
+    let parsedDate = new Date(validatedData.date);
+    if (isNaN(parsedDate.getTime())) {
+      const parts = validatedData.date.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          parsedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else {
+          parsedDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        }
+      } else {
+        parsedDate = new Date();
+      }
     }
 
     const event = await prisma.event.create({
@@ -70,7 +93,7 @@ export async function createEvent(data: any) {
         time: validatedData.time || '10:00',
         venue: validatedData.venue || 'TBA',
         capacity: validatedData.capacity,
-        clubId: validatedData.clubId,
+        clubId: targetClubId,
         status: 'PENDING',
         bannerImageUrl: validatedData.bannerImageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=60',
         squareImageUrl: validatedData.squareImageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=60',

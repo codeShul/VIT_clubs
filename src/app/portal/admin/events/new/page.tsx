@@ -43,25 +43,25 @@ export default function NewEventPage() {
         date: formData.date,
         time: formData.time,
         venue: formData.venue,
-        capacity: parseInt(formData.capacity, 10),
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
-        clubId: user.clubId!,
-        clubName: user.clubName!,
+        capacity: parseInt(formData.capacity, 10) || 100,
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        clubId: user.clubId || '',
+        clubName: user.clubName || 'Club',
       });
 
       // Notify super admin
       addNotification({
         type: 'event_created',
         title: 'New Event Pending Approval',
-        message: `"${newEvent.title}" by ${user.clubName} needs your review.`,
+        message: `"${newEvent.title}" by ${user.clubName || 'Club'} needs your review.`,
         eventId: newEvent.id,
         audience: 'super-admin',
       });
 
       router.push('/portal/admin/events');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create event:', err);
-      alert('Failed to create event. Please try again.');
+      alert(err?.message || 'Failed to create event. Please try again.');
     } finally {
       setSaving(false);
     }
