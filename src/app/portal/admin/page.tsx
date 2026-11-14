@@ -7,9 +7,9 @@ import { getClubById } from '@/app/actions/clubs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, CalendarDays, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
+import { EventEntity } from '@/lib/domain'; // Unit 4: OOP domain import
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -29,8 +29,19 @@ export default function AdminDashboard() {
   if (!myClub) return null;
 
   const clubEvents = events.filter(e => e.clubId === myClub.id);
-  const upcomingEvents = clubEvents.filter(e => new Date(e.date) >= new Date());
-  const approvedEvents = clubEvents.filter(e => (e.status as string) === 'APPROVED');
+
+  // ── UNIT 4: OOP-based stats using EventEntity domain methods ─────────────
+  // Uses isUpcoming() and isApproved() — both override abstract BaseEntity.validate()
+  const upcomingEvents  = clubEvents.filter(e => new EventEntity({
+    id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
+    capacity: e.capacity, status: e.status, clubId: e.clubId,
+  }).isUpcoming()); // Unit 2: Encapsulated domain logic
+
+  const approvedEvents  = clubEvents.filter(e => new EventEntity({
+    id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
+    capacity: e.capacity, status: e.status, clubId: e.clubId,
+  }).isApproved()); // Unit 4: Polymorphic method override
+  // ── End OOP stats ──────────────────────────────────────────────────────
 
   const STATS = [
     { label: 'Total Members', value: myClub.members?.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -83,6 +94,40 @@ export default function AdminDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* ── OOP Domain Model Panel (Unit 2, 3, 4, 6) ─────────────────────────── */}
+      <Card className="bg-blue-500/5 border-blue-500/20 backdrop-blur-md">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
+            OOP Domain Model — EventEntity Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {clubEvents.slice(0, 4).map(e => {
+              // Unit 3 & 4: Constructor chaining + polymorphic method calls
+              const de = new EventEntity({ id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA', capacity: e.capacity, status: e.status, clubId: e.clubId });
+              const reg = e._count?.registrations ?? 0;
+              return (
+                <div key={e.id} className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground font-medium truncate">{e.title}</div>
+                  {/* Unit 2: calling encapsulated getRemainingCapacity() */}
+                  <div className="text-lg font-bold text-blue-400">{de.getRemainingCapacity(reg)}</div>
+                  <div className="text-[10px] text-muted-foreground">spots remaining</div>
+                  <div className={`text-[10px] font-bold mt-1 ${de.isUpcoming() ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {de.isUpcoming() ? '↑ Upcoming' : '✓ Past'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {clubEvents.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No club events yet. Create one to see OOP analytics.</p>
+          )}
+        </CardContent>
+      </Card>
+      {/* ── End OOP Panel ────────────────────────────────────────────────────── */}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-white/5 border-white/10 backdrop-blur-md">

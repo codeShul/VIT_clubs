@@ -4,6 +4,12 @@ import prisma from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createEventSchema, registerEventSchema, eventIdSchema } from '@/lib/validations';
+import { 
+  EventEntity, 
+  ValidationException, 
+  CapacityExceededException, 
+  UnauthorizedException 
+} from '@/lib/domain';
 
 function getPrisma() {
   return prisma;
@@ -84,6 +90,31 @@ export async function createEvent(data: any) {
         parsedDate = new Date();
       }
     }
+
+    // ── UNIT 2, 3, 4: OOP Domain Validation ──────────────────────────────
+    // Instantiate EventEntity (Unit 4: Hierarchical Inheritance from BaseEntity)
+    // Constructor uses default arguments (Unit 3), validate() is polymorphic (Unit 4)
+    const domainEvent = new EventEntity({
+      id: 'pending-' + Date.now(),
+      title: validatedData.title,
+      description: validatedData.description,
+      date: parsedDate,
+      time: validatedData.time || '10:00',
+      venue: validatedData.venue || 'TBA',
+      capacity: validatedData.capacity,
+      status: 'PENDING',
+      clubId: targetClubId,
+    });
+
+    // Unit 4: Runtime Polymorphism — validate() is overridden in EventEntity
+    if (!domainEvent.validate()) {
+      // Unit 6: Throw custom domain exception
+      throw new ValidationException(
+        `Event "${validatedData.title}" failed domain validation. ` +
+        `Capacity must be between 1 and ${EventEntity.MAX_CAPACITY}.`
+      );
+    }
+    // ── End OOP Domain Validation ─────────────────────────────────────────
 
     const event = await prisma.event.create({
       data: {
@@ -217,9 +248,25 @@ export async function registerForEvent(eventId: string, userId: string) {
     });
     
     if (!event) return { success: false, error: 'Event not found' };
-    if (event._count.registrations >= event.capacity) {
-      return { success: false, error: 'Event is at full capacity' };
+
+    // ── UNIT 4, 6: OOP Capacity Check via EventEntity ─────────────────────
+    // Instantiate domain object (Unit 4: Inheritance, Unit 3: Constructor)
+    const domainEvent = new EventEntity({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      venue: event.venue,
+      capacity: event.capacity,
+      status: event.status,
+      clubId: event.clubId,
+    });
+
+    // Unit 4: Polymorphic method call — isFull() checks business capacity rule
+    if (domainEvent.isFull(event._count.registrations)) {
+      // Unit 6: Custom exception hierarchy — CapacityExceededException extends DomainException
+      throw new CapacityExceededException(domainEvent.capacity);
     }
+    // ── End OOP Capacity Check ─────────────────────────────────────────────
 
     const registration = await prisma.registration.create({
       data: {
@@ -230,8 +277,9 @@ export async function registerForEvent(eventId: string, userId: string) {
     });
 
     return { success: true, registration };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration failed:", error);
-    return { success: false, error: 'Failed to register for event' };
+    // Unit 6: Structured exception handling — surface domain error messages cleanly
+    return { success: false, error: error?.message || 'Failed to register for event' };
   }
 }

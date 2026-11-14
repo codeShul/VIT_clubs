@@ -9,6 +9,7 @@ import { Search, Calendar, MapPin, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { EventEntity } from '@/lib/domain'; // Unit 4: OOP domain import
 
 const container = {
   hidden: { opacity: 0 },
@@ -25,13 +26,17 @@ const item = {
 
 export default function EventsPage() {
   const { events } = useEvents();
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+
+  // ── UNIT 4: OOP-based filtering using EventEntity domain methods ─────────
+  // Uses isApproved() and isUpcoming() from EventEntity (Unit 4: Method Overriding)
   const approvedEvents = events.filter(e => {
-    const isApproved = e.status === 'APPROVED' || e.status === 'approved';
-    const isUpcoming = new Date(e.date) >= now;
-    return isApproved && isUpcoming;
+    const domainEvent = new EventEntity({
+      id: e.id, title: e.title, date: e.date,
+      venue: e.venue || 'TBA', capacity: e.capacity, status: e.status, clubId: e.clubId,
+    });
+    return domainEvent.isApproved() && domainEvent.isUpcoming(); // Unit 2: encapsulated methods
   });
+  // ── End OOP filtering ──────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#05050A] pt-12 pb-24">
@@ -72,13 +77,27 @@ export default function EventsPage() {
           animate="show"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {approvedEvents.map(event => (
+          {approvedEvents.map(event => {
+            // Unit 2, 3: Instantiate domain object per event (encapsulation + constructor)
+            const domainEvent = new EventEntity({
+              id: event.id, title: event.title, date: event.date,
+              venue: event.venue || 'TBA', capacity: event.capacity,
+              status: event.status, clubId: event.clubId,
+            });
+            const regCount      = event._count?.registrations ?? 0;
+            const remaining     = domainEvent.getRemainingCapacity(regCount); // Unit 2: method call
+            const full          = domainEvent.isFull(regCount);              // Unit 4: overridden method
+
+            return (
             <motion.div key={event.id} variants={item}>
               <Card className="overflow-hidden bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none group hover:border-blue-300 dark:hover:border-cyan-500/50 hover:shadow-md transition-all duration-300">
                 <div className="relative h-48 w-full overflow-hidden">
                   <Image src={event.bannerImageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87'} alt={event.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
                   {event.tags && event.tags.length > 0 && (
                     <Badge className="absolute top-4 right-4 bg-blue-600 dark:bg-cyan-500 text-white backdrop-blur-md border-0">{Array.isArray(event.tags) ? event.tags[0] : event.tags}</Badge>
+                  )}
+                  {full && (
+                    <div className="absolute top-4 left-4 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm">FULL</div>
                   )}
                 </div>
                 <CardHeader>
@@ -91,15 +110,17 @@ export default function EventsPage() {
                     <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-blue-500 dark:text-cyan-400" /> {event.venue}</div>
                   </div>
                   <div className="pt-2 flex items-center justify-between">
-                    <div className="text-xs text-slate-500 dark:text-gray-500 font-medium">{event._count?.registrations || 0}/{event.capacity} Registered</div>
-                    <Link href={`/events/${event.id}`} className="inline-flex items-center justify-center rounded-lg px-2.5 h-7 text-[0.8rem] font-medium text-white bg-blue-600 dark:bg-cyan-500 hover:bg-blue-700 dark:hover:bg-cyan-600 transition-colors">
-                      Register <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                    <div className={`text-xs font-medium ${full ? 'text-red-500 dark:text-red-400' : 'text-slate-500 dark:text-gray-500'}`}>
+                      {full ? 'No spots left' : `${remaining} spots left`}
+                    </div>
+                    <Link href={`/events/${event.id}`} className={`inline-flex items-center justify-center rounded-lg px-2.5 h-7 text-[0.8rem] font-medium text-white transition-colors ${full ? 'bg-slate-400 dark:bg-slate-600 cursor-not-allowed' : 'bg-blue-600 dark:bg-cyan-500 hover:bg-blue-700 dark:hover:bg-cyan-600'}`}>
+                      {full ? 'View' : 'Register'} <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Link>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
+          );})}
         </motion.div>
       </div>
     </div>

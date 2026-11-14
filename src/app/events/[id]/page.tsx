@@ -6,10 +6,11 @@ import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Users, Clock, ArrowLeft, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, ArrowLeft, Loader2, ShieldCheck, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { registerForEvent } from '@/app/actions/events';
+import { EventEntity } from '@/lib/domain';
 
 export default function EventDetailsPage(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params);
@@ -26,6 +27,25 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
   if (!event) {
     notFound();
   }
+
+  // ── UNIT 2, 3, 4: OOP Domain Object instantiation ──────────────────────
+  // EventEntity (Unit 4: extends BaseEntity), constructor with defaults (Unit 3)
+  const domainEvent = new EventEntity({
+    id: event.id,
+    title: event.title,
+    date: event.date,
+    venue: event.venue,
+    capacity: event.capacity,
+    status: event.status,
+    clubId: event.clubId,
+  });
+  // Unit 2: Calling encapsulated domain methods
+  const registrationCount = event._count?.registrations ?? (event.registeredCount ?? 0);
+  const remainingSpots = domainEvent.getRemainingCapacity(registrationCount); // Unit 2: encapsulated method
+  const isUpcoming      = domainEvent.isUpcoming();                          // Unit 2: business logic
+  const isApproved      = domainEvent.isApproved();                          // Unit 4: status check
+  const isFull          = domainEvent.isFull(registrationCount);             // Unit 4: overriding
+  // ── End OOP Domain Object ─────────────────────────────────────────────
 
   const handleRegister = async () => {
     if (!user) {
@@ -121,21 +141,58 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
               </div>
 
               <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/10">
+                {/* ── OOP Domain Metrics Panel (Unit 2, 4) ── */}
+                <div className="mb-5 rounded-xl border border-blue-200 dark:border-cyan-500/30 bg-blue-50 dark:bg-cyan-500/10 p-4 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-cyan-400 uppercase tracking-wider mb-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-cyan-400"></span>
+                    Domain Model · EventEntity
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-gray-300">
+                    <span>Remaining Capacity</span>
+                    <span className={`font-bold ${isFull ? 'text-red-500' : 'text-green-500 dark:text-emerald-400'}`}>
+                      {isFull ? '0 (Full)' : `${remainingSpots} / ${event.capacity}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-gray-300">
+                    <span>Status</span>
+                    <span className={`font-bold ${isApproved ? 'text-green-500 dark:text-emerald-400' : 'text-yellow-500'}`}>
+                      {isApproved ? 'Approved ✓' : (event.status as string)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-gray-300">
+                    <span>Upcoming</span>
+                    <span className={`font-bold ${isUpcoming ? 'text-blue-600 dark:text-cyan-400' : 'text-slate-400'}`}>
+                      {isUpcoming ? 'Yes' : 'Past Event'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-gray-300">
+                    <span>Max Capacity (static)</span>
+                    <span className="font-bold text-slate-500 dark:text-gray-400">{EventEntity.MAX_CAPACITY.toLocaleString()}</span>
+                  </div>
+                </div>
+                {/* ── End OOP Panel ── */}
+
                 <div className="flex justify-between text-sm font-medium mb-3">
                   <span className="text-slate-900 dark:text-white">Registration</span>
-                  <span className="text-blue-700 dark:text-cyan-400 bg-blue-100 dark:bg-cyan-500/20 px-2 py-0.5 rounded text-xs font-semibold">Open</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                    isFull
+                      ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20'
+                      : 'text-blue-700 dark:text-cyan-400 bg-blue-100 dark:bg-cyan-500/20'
+                  }`}>{isFull ? 'Full' : 'Open'}</span>
                 </div>
                 
                 <Button 
                   size="lg" 
                   className="w-full font-bold text-base h-14 bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-600 dark:to-cyan-500 hover:from-blue-700 hover:to-cyan-700 dark:hover:from-blue-500 dark:hover:to-cyan-400 border-0 text-white shadow-md shadow-blue-500/20 dark:shadow-none disabled:opacity-70" 
                   onClick={handleRegister}
-                  disabled={isRegistering || registrationStatus === 'success'}
+                  disabled={isRegistering || registrationStatus === 'success' || isFull}
                 >
                   {isRegistering ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Registering...</>
                   ) : registrationStatus === 'success' ? (
-                    'Registered'
+                    'Registered ✓'
+                  ) : isFull ? (
+                    'Event Full'
                   ) : (
                     'Register Now'
                   )}
@@ -143,7 +200,7 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
                 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-gray-500 font-medium">
                   <Users className="h-4 w-4 text-slate-400 dark:text-gray-500" />
-                  <span>Limited spots available ({event.capacity} total)</span>
+                  <span>{remainingSpots} spots left of {event.capacity}</span>
                 </div>
               </div>
             </div>

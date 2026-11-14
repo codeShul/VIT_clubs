@@ -4,8 +4,8 @@ export const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().min(1, "Description is required").max(2000),
   date: z.string().min(1, "Date is required"),
-  time: z.string().min(1, "Time is required"),
-  venue: z.string().min(1, "Venue is required").max(100),
+  time: z.string().optional().default('10:00'),
+  venue: z.string().optional().default('TBA').transform(v => v || 'TBA'),
   capacity: z.coerce.number().int().positive().max(10000, "Capacity cannot exceed 10000").default(100),
   tags: z.array(z.string()).or(z.string()).optional().transform(val => {
     if (!val) return [];
