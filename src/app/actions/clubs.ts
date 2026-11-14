@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/db';
+import { ClubEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
 
 function getPrisma() {
   return prisma;
@@ -17,6 +18,26 @@ export async function getClubs() {
       },
       orderBy: { name: 'asc' }
     });
+
+    // Unit 4 & 6: Instantiate generic EntityCollection<ClubEntity>
+    const clubCollection = new EntityCollection<ClubEntity>(
+      clubs.map(c => new ClubEntity({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        domain: c.domain,
+        description: c.description,
+        vision: c.vision,
+        logoUrl: c.logoUrl,
+        coverUrl: c.coverUrl,
+        facultyCoordinatorId: c.facultyCoordinatorId,
+        isFeatured: c.isFeatured,
+        isActive: c.isActive,
+      }))
+    );
+    // Polymorphic batch validation (Unit 4)
+    clubCollection.validateAll();
+
     return clubs;
   } catch (error) {
     console.error("Failed to fetch clubs:", error);

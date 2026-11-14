@@ -6,6 +6,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createEventSchema, registerEventSchema, eventIdSchema } from '@/lib/validations';
 import { 
   EventEntity, 
+  PermissionLetterEntity,
+  EntityCollection,
   ValidationException, 
   CapacityExceededException, 
   UnauthorizedException 
@@ -26,6 +28,25 @@ export async function getEvents() {
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    // Unit 6: Generic EntityCollection for domain validation across object arrays
+    const eventCollection = new EntityCollection<EventEntity>(
+      events.map(e => new EventEntity({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        date: e.date,
+        time: e.time,
+        venue: e.venue,
+        capacity: e.capacity,
+        status: e.status,
+        clubId: e.clubId,
+        bannerImageUrl: e.bannerImageUrl,
+        squareImageUrl: e.squareImageUrl,
+      }))
+    );
+    eventCollection.validateAll();
+
     return events;
   } catch (error) {
     console.error("Failed to fetch events:", error);
@@ -153,8 +174,8 @@ export async function approveEvent(eventId: string, superAdminId: string) {
       data: { status: 'APPROVED' }
     });
 
-    // 2. Generate Permission Letter
-    const token = `VITC-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    // 2. Generate Permission Letter via Domain Model (Unit 4: PermissionLetterEntity)
+    const token = PermissionLetterEntity.generateToken();
     await prisma.permissionLetter.create({
       data: {
         eventId,

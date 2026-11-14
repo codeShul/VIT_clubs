@@ -9,7 +9,7 @@ import { Search, Calendar, MapPin, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { EventEntity } from '@/lib/domain'; // Unit 4: OOP domain import
+import { EventEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
 
 const container = {
   hidden: { opacity: 0 },
@@ -27,15 +27,27 @@ const item = {
 export default function EventsPage() {
   const { events } = useEvents();
 
-  // ── UNIT 4: OOP-based filtering using EventEntity domain methods ─────────
-  // Uses isApproved() and isUpcoming() from EventEntity (Unit 4: Method Overriding)
-  const approvedEvents = events.filter(e => {
-    const domainEvent = new EventEntity({
-      id: e.id, title: e.title, date: e.date,
-      venue: e.venue || 'TBA', capacity: e.capacity, status: e.status, clubId: e.clubId,
-    });
-    return domainEvent.isApproved() && domainEvent.isUpcoming(); // Unit 2: encapsulated methods
-  });
+  // ── UNIT 4 & 6: Generic EntityCollection<EventEntity> Filtering ─────────
+  // Instantiates generic collection of EventEntity objects, filters polymorphically
+  const eventCollection = new EntityCollection<EventEntity>(
+    events.map(e => new EventEntity({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      date: e.date,
+      time: e.time,
+      venue: e.venue || 'TBA',
+      capacity: e.capacity,
+      status: e.status,
+      clubId: e.clubId,
+      bannerImageUrl: e.bannerImageUrl,
+      squareImageUrl: e.squareImageUrl,
+    }))
+  );
+  // Unit 2 & 4: Uses encapsulated isApproved() & isUpcoming() member methods
+  const approvedEvents = eventCollection
+    .filter(e => e.isApproved() && e.isUpcoming())
+    .all();
   // ── End OOP filtering ──────────────────────────────────────────────────
 
   return (

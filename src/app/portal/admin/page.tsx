@@ -9,7 +9,7 @@ import { Users, CalendarDays, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
-import { EventEntity } from '@/lib/domain'; // Unit 4: OOP domain import
+import { EventEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -30,17 +30,16 @@ export default function AdminDashboard() {
 
   const clubEvents = events.filter(e => e.clubId === myClub.id);
 
-  // ── UNIT 4: OOP-based stats using EventEntity domain methods ─────────────
-  // Uses isUpcoming() and isApproved() — both override abstract BaseEntity.validate()
-  const upcomingEvents  = clubEvents.filter(e => new EventEntity({
-    id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
-    capacity: e.capacity, status: e.status, clubId: e.clubId,
-  }).isUpcoming()); // Unit 2: Encapsulated domain logic
-
-  const approvedEvents  = clubEvents.filter(e => new EventEntity({
-    id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
-    capacity: e.capacity, status: e.status, clubId: e.clubId,
-  }).isApproved()); // Unit 4: Polymorphic method override
+  // ── UNIT 4 & 6: OOP Stats using Generic EntityCollection<EventEntity> ─────
+  // Encapsulates object array, calls polymorphic isUpcoming() and isApproved()
+  const eventCollection = new EntityCollection<EventEntity>(
+    clubEvents.map(e => new EventEntity({
+      id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
+      capacity: e.capacity, status: e.status, clubId: e.clubId,
+    }))
+  );
+  const upcomingEvents = eventCollection.filter(e => e.isUpcoming()).all();
+  const approvedEvents = eventCollection.filter(e => e.isApproved()).all();
   // ── End OOP stats ──────────────────────────────────────────────────────
 
   const STATS = [
