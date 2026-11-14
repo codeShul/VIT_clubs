@@ -20,10 +20,10 @@ flowchart LR
         StorageCluster["S3-Compatible Object Store<br/>Banners, Logos & Attachments"]
     end
 
-    ClientBrowser -->|HTTPS :443| VercelEdge
-    VercelEdge -->|Internal Route| ServerlessApp
-    ServerlessApp -->|Prisma @prisma/adapter-pg (Port 6543)| PgBouncerService
-    ServerlessApp -.->|Migrations (Port 5432)| PostgresInstance
-    PgBouncerService -->|Localhost IPC| PostgresInstance
-    ClientBrowser -.->|Direct Image GET| StorageCluster
+    ClientBrowser -->|"HTTPS :443"| VercelEdge
+    VercelEdge -->|"Internal Route"| ServerlessApp
+    ServerlessApp -->|"Prisma Adapter-PG (Port 6543)"| PgBouncerService
+    ServerlessApp -.->|"Migrations (Port 5432)"| PostgresInstance
+    PgBouncerService -->|"Localhost IPC"| PostgresInstance
+    ClientBrowser -.->|"Direct Image GET"| StorageCluster
 ```
