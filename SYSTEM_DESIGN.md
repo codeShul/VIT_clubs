@@ -346,3 +346,122 @@ flowchart TD
 
     Perimeter --> AppSecurity --> DataSecurity
 ```
+
+---
+
+## 6. Object-Oriented Class Diagram
+
+The domain model hierarchy implemented in `src/lib/domain.ts`:
+
+```mermaid
+classDiagram
+    class BaseEntity {
+        <<abstract>>
+        +String id
+        +Date createdAt
+        +Date updatedAt
+        +isNew() bool
+        +validate()* bool
+        +toJSON()* Record
+    }
+
+    class EventEntity {
+        +String title
+        +Date date
+        +String venue
+        +int capacity
+        +String status
+        +String clubId
+        +MAX_CAPACITY$ int
+        +validate() bool
+        +toJSON() Record
+        +isUpcoming() bool
+        +isApproved() bool
+        +isFull(int currentRegistrations) bool
+        +getRemainingCapacity(int currentRegistrations) int
+    }
+
+    class UserEntity {
+        +String name
+        +String email
+        +String role
+        +String regNo
+        +String year
+        +String branch
+        -String password
+        +validate() bool
+        +toJSON() Record
+        +hasRole(String role) bool
+        +isSuperAdmin() bool
+        +isAdmin() bool
+        +hasPassword() bool
+    }
+
+    class ClubEntity {
+        +String name
+        +String slug
+        +String description
+        +String vision
+        +String domain
+        +String logoUrl
+        +String coverUrl
+        +String facultyCoordinatorId
+        +bool isFeatured
+        +bool isActive
+        +validate() bool
+        +toJSON() Record
+        +canCreateEvent(UserEntity user) bool
+    }
+
+    class RateLimiter {
+        -Map store$
+        -int limit
+        -int windowMs
+        +check(String identifier) Result
+        +getRemaining(String identifier) int
+        +cleanup() void
+    }
+
+    class IAuthService {
+        <<interface>>
+        +authorize(String email, String password)* Promise~UserEntity~
+        +hashPassword(String plain)* Promise~String~
+        +comparePassword(String plain, String hash)* Promise~bool~
+    }
+
+    class AuthService {
+        -PrismaClient prisma
+        +authorize(String email, String password) Promise~UserEntity~
+        +hashPassword(String plain) Promise~String~
+        +comparePassword(String plain, String hash) Promise~bool~
+    }
+
+    class EventService {
+        -PrismaClient prisma
+        -RateLimiter rateLimiter
+        +getEvents() Promise~List~
+        +createEvent(Object data) Promise~Result~
+        +approveEvent(String id, String superAdminId) Promise~Result~
+        +rejectEvent(String id) Promise~Result~
+        +registerForEvent(String eventId, String userId) Promise~Result~
+    }
+
+    BaseEntity <|-- EventEntity : Inheritance
+    BaseEntity <|-- UserEntity : Inheritance
+    BaseEntity <|-- ClubEntity : Inheritance
+    IAuthService <|.. AuthService : Implements
+    AuthService --> UserEntity : Creates / Authenticates
+    EventService --> EventEntity : Validates & Manages
+    EventService --> RateLimiter : Uses for throttling
+```
+
+---
+
+> [!TIP]
+> Individual modular diagram files are stored in the [`diagrams/`](./diagrams/) folder:
+> - [Class Diagram](./diagrams/class-diagram.md)
+> - [System Architecture](./diagrams/system-architecture.md)
+> - [Sequence Diagram](./diagrams/sequence-diagram.md)
+> - [Entity-Relationship Diagram](./diagrams/er-diagram.md)
+> - [Deployment Topology](./diagrams/deployment-topology.md)
+
