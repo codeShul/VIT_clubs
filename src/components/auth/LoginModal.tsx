@@ -44,11 +44,21 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [loading, setLoading] = React.useState<string | null>(null);
 
   const handleLogin = async (user: MockUser) => {
-    setLoading(user.id);
-    await new Promise((r) => setTimeout(r, 600)); // brief loading feel
-    login(user);
-    onClose();
-    router.push(getPortalPath(user));
+    try {
+      setLoading(user.id);
+      const res = await login(user);
+      if (res?.error) {
+        console.error("Login failed:", res.error);
+        alert("Login failed: " + res.error);
+        setLoading(null);
+        return;
+      }
+      onClose();
+      window.location.href = getPortalPath(user);
+    } catch (err) {
+      console.error("Login error:", err);
+      setLoading(null);
+    }
   };
 
   return (

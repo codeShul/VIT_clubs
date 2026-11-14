@@ -24,7 +24,7 @@ export type MockUser = AuthUser;
 
 interface AuthContextValue {
   user: AuthUser | null;
-  login: (user: any) => Promise<void>;
+  login: (user: any) => Promise<any>;
   logout: () => void;
   updateUser: (patch: Partial<AuthUser>) => void;
   isLoading: boolean;
@@ -56,7 +56,9 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         name: session.user.name as string,
         email: session.user.email as string,
         role: frontendRole,
-        clubId: (session.user.clubId as string) || undefined
+        clubId: (session.user.clubId as string) || undefined,
+        clubName: (session.user as any).clubName || undefined,
+        avatarUrl: (session.user as any).avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(session.user.name || 'User')}`
       };
     }
     return null;
@@ -65,13 +67,12 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   const login = React.useCallback(async (mockUser: any) => {
     // For backwards compatibility with the mock login modal, 
     // we use the mock user's email and a generic password to trigger NextAuth credentials sign in.
-    await signIn('credentials', {
+    const res = await signIn('credentials', {
       email: mockUser.email,
       password: 'mock',
       redirect: false
     });
-    // The page will need to reload or the modal will close.
-    // The actual redirect is handled in the modal for now.
+    return res;
   }, []);
 
   const logout = React.useCallback(() => {

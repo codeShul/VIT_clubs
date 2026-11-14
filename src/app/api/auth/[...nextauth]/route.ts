@@ -59,16 +59,26 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          include: { coordinatedClubs: true, memberships: { where: { role: { in: ['LEAD', 'CORE_TEAM'] } } } }
+          include: { 
+            coordinatedClubs: true, 
+            memberships: { 
+              where: { role: { in: ['LEAD', 'CORE_TEAM'] } },
+              include: { club: true }
+            } 
+          }
         });
         
         let clubId = null;
+        let clubName = null;
         if (dbUser?.coordinatedClubs.length) {
           clubId = dbUser.coordinatedClubs[0].id;
+          clubName = dbUser.coordinatedClubs[0].name;
         } else if (dbUser?.memberships.length) {
           clubId = dbUser.memberships[0].clubId;
+          clubName = dbUser.memberships[0].club?.name || null;
         }
         token.clubId = clubId;
+        token.clubName = clubName;
       }
       return token;
     },
@@ -77,6 +87,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.clubId = token.clubId as string | null;
+        (session.user as any).clubName = token.clubName as string | null;
       }
       return session;
     }
