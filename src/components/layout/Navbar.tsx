@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { label: 'Events', href: '/events' },
   { label: 'Calendar', href: '/calendar' },
   { label: 'Dashboard', href: '/portal' },
+  { label: '🎓 OOP Syllabus', href: '/oop' },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
