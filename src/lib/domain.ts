@@ -1,63 +1,36 @@
-/**
- * ==============================================================================
- * VIT CLUBS (CCMS) — UNIFIED OBJECT-ORIENTED CORE DOMAIN ENGINE
- * ==============================================================================
- * This single master file is the foundational domain backbone for the entire
- * Campus Club Management System. Every class, method, exception, generic container,
- * and stream utility across Units 2 through 6 of the OOP syllabus is defined here
- * and actively utilized by the application's Server Actions, API routes, and UI.
- *
- * SYLLABUS UNIT MAPPING:
- * - UNIT 2: Classes, Objects, Visibility/Access Modifiers, Encapsulation,
- *           Static Members, Member Methods, Object Arrays
- * - UNIT 3: Parameterized Constructors, Default Arguments, Constructor Chaining,
- *           Dynamic Initialization, Destructor/Cleanup Pattern
- * - UNIT 4: Hierarchical Inheritance, Abstract Classes, Pure Virtual Methods,
- *           Method Overriding, Runtime Polymorphism, Interface Segregation
- * - UNIT 5: File I/O Streams, Record Deserialization, CSV/JSON Streaming
- * - UNIT 6: Custom Exception Hierarchy, Generic Programming (Generics), S.O.L.I.D.
- * ==============================================================================
- */
+export type ProgrammingParadigmType = 'PROCEDURAL' | 'IMPERATIVE' | 'DECLARATIVE' | 'OBJECT_ORIENTED';
 
-// ─── UNIT 4 & 3: ABSTRACT BASE CLASS ──────────────────────────────────────────
+/** Message Passing Interface — synchronous/asynchronous communication between domain objects */
+export interface IDomainMessage<T = unknown> {
+  readonly senderId: string;
+  readonly recipientId?: string;
+  readonly action: string;
+  readonly payload: T;
+  readonly timestamp: Date;
+}
 
-/**
- * UNIT 4: Abstract Base Class
- * BaseEntity cannot be directly instantiated. It defines the common identity
- * attributes and polymorphic abstract method contracts for all domain models.
- */
+// ─── ABSTRACT BASE CLASS ──────────────────────────────────────────────────────
+
 export abstract class BaseEntity {
-  /** UNIT 2: Public Readonly Property — immutable identity */
   public readonly id: string;
   public readonly createdAt: Date;
   public updatedAt: Date;
 
-  /**
-   * UNIT 3: Parameterized Constructor with Default Arguments
-   * If createdAt or updatedAt are omitted, system defaults to Date.now().
-   */
   constructor(id: string, createdAt?: Date, updatedAt?: Date) {
     this.id = id;
-    this.createdAt = createdAt ?? new Date(); // Default argument (Unit 3)
-    this.updatedAt = updatedAt ?? new Date(); // Default argument (Unit 3)
+    this.createdAt = createdAt ?? new Date();
+    this.updatedAt = updatedAt ?? new Date();
   }
 
-  /**
-   * UNIT 4: Pure Abstract Method (Abstract contract)
-   * Must be overridden polymorphically by all concrete subclasses.
-   */
   abstract validate(): boolean;
-
-  /**
-   * UNIT 4: Pure Abstract Method
-   * Serializes the entity to a clean dictionary, enforcing encapsulation.
-   */
   abstract toJSON(): Record<string, unknown>;
 
-  /**
-   * UNIT 4: Inherited Concrete Method
-   * Shared business utility across all subclasses (Event, User, Club, Registration).
-   */
+  public receiveMessage(message: IDomainMessage): boolean {
+    if (!message || !message.action) return false;
+    this.touch();
+    return true;
+  }
+
   public isNew(): boolean {
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     return Date.now() - this.createdAt.getTime() < ONE_DAY_MS;
@@ -73,14 +46,9 @@ export abstract class BaseEntity {
   }
 }
 
-// ─── UNIT 2, 3, 4: EVENT ENTITY SUBCLASS ──────────────────────────────────────
+// ─── EVENT ENTITY ─────────────────────────────────────────────────────────────
 
-/**
- * UNIT 4: Concrete Derived Class (Hierarchical Inheritance from BaseEntity)
- * UNIT 2: Encapsulates event capacity boundaries, status, and domain calculations.
- */
 export class EventEntity extends BaseEntity {
-  /** UNIT 2: Static Member Constant shared across all instances */
   public static readonly MAX_CAPACITY: number = 10_000;
 
   public title: string;
@@ -98,9 +66,6 @@ export class EventEntity extends BaseEntity {
   public club?: { id?: string; name?: string; domain?: string; [key: string]: any };
   public _count?: { registrations?: number; [key: string]: any };
 
-  /**
-   * UNIT 3: Constructor Chaining via super() & Default Arguments
-   */
   constructor(data: {
     id: string;
     title: string;
@@ -120,7 +85,7 @@ export class EventEntity extends BaseEntity {
     createdAt?: Date;
     updatedAt?: Date;
   }) {
-    super(data.id, data.createdAt, data.updatedAt); // Unit 3 Constructor chaining
+    super(data.id, data.createdAt, data.updatedAt);
     this.title = data.title;
     this.description = data.description;
     this.date = typeof data.date === 'string' ? parseDateFlexible(data.date) : data.date;
@@ -137,10 +102,6 @@ export class EventEntity extends BaseEntity {
     this._count = data._count;
   }
 
-  /**
-   * UNIT 4: Method Overriding & Runtime Polymorphism
-   * Enforces event-specific business rules.
-   */
   override validate(): boolean {
     return (
       this.title.trim().length >= 1 &&
@@ -150,9 +111,6 @@ export class EventEntity extends BaseEntity {
     );
   }
 
-  /**
-   * UNIT 4: Method Overriding for clean JSON presentation
-   */
   override toJSON(): Record<string, unknown> {
     return {
       id: this.id,
@@ -166,12 +124,26 @@ export class EventEntity extends BaseEntity {
       clubId: this.clubId,
       bannerImageUrl: this.bannerImageUrl,
       squareImageUrl: this.squareImageUrl,
+      tags: this.tags,
+      clubName: this.clubName,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
     };
   }
 
-  /** UNIT 2: Encapsulated Domain Logic Methods */
+  override receiveMessage(message: IDomainMessage): boolean {
+    super.receiveMessage(message);
+    if (message.action === 'APPROVE') {
+      this.status = 'APPROVED';
+      return true;
+    }
+    if (message.action === 'REJECT') {
+      this.status = 'REJECTED';
+      return true;
+    }
+    return false;
+  }
+
   public isUpcoming(): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -194,16 +166,35 @@ export class EventEntity extends BaseEntity {
     return this.date.toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   }
 
-  /** UNIT 2: Static Factory Method */
+  /** Method Overloading — accepts either an object patch or individual params */
+  public updateDetails(patch: { title?: string; venue?: string; capacity?: number }): void;
+  public updateDetails(title: string, venue?: string, capacity?: number): void;
+  public updateDetails(
+    arg1: string | { title?: string; venue?: string; capacity?: number },
+    venue?: string,
+    capacity?: number
+  ): void {
+    if (typeof arg1 === 'string') {
+      this.title = arg1;
+      if (venue) this.venue = venue;
+      if (capacity !== undefined) this.capacity = capacity;
+    } else {
+      if (arg1.title) this.title = arg1.title;
+      if (arg1.venue) this.venue = arg1.venue;
+      if (arg1.capacity !== undefined) this.capacity = arg1.capacity;
+    }
+    this.touch();
+  }
+
   public static createDraft(clubId: string, title: string, capacity = 100): EventEntity {
     return new EventEntity({
       id: 'draft-' + Math.random().toString(36).substring(2, 9),
       title,
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 1 week ahead
+      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       capacity,
       status: 'DRAFT',
       clubId,
@@ -211,12 +202,8 @@ export class EventEntity extends BaseEntity {
   }
 }
 
-// ─── UNIT 2, 4: USER ENTITY SUBCLASS ──────────────────────────────────────────
+// ─── USER ENTITY ──────────────────────────────────────────────────────────────
 
-/**
- * UNIT 4: Concrete Derived Class (Hierarchical Inheritance from BaseEntity)
- * UNIT 2: Encapsulates user profile, university email verification, and private credentials.
- */
 export class UserEntity extends BaseEntity {
   public name: string;
   public email: string;
@@ -226,10 +213,7 @@ export class UserEntity extends BaseEntity {
   public branch: string;
   public avatarUrl?: string;
 
-  /**
-   * UNIT 2: Private Access Modifier (# / private)
-   * The password credential is strictly hidden and impossible to read from outside.
-   */
+  /** Private — strictly encapsulated, excluded from toJSON output */
   private password?: string;
 
   constructor(data: {
@@ -256,10 +240,6 @@ export class UserEntity extends BaseEntity {
     this.password = data.password;
   }
 
-  /**
-   * UNIT 4: Method Overriding & Runtime Polymorphism
-   * Enforces university email domain constraints.
-   */
   override validate(): boolean {
     return (
       this.name.trim().length > 0 &&
@@ -268,10 +248,7 @@ export class UserEntity extends BaseEntity {
     );
   }
 
-  /**
-   * UNIT 2: Encapsulation
-   * The private password field is intentionally excluded from the serialization.
-   */
+  /** Password is excluded from the JSON output — information hiding */
   override toJSON(): Record<string, unknown> {
     return {
       id: this.id,
@@ -287,7 +264,6 @@ export class UserEntity extends BaseEntity {
     };
   }
 
-  /** UNIT 2: Member Methods exposing safe state queries */
   public hasRole(role: string): boolean {
     return this.role === role;
   }
@@ -308,20 +284,15 @@ export class UserEntity extends BaseEntity {
     return !!this.password;
   }
 
-  /**
-   * Safe password verifier avoiding raw credential leakage
-   */
+  /** Friend function pattern — allows trusted comparator to verify without exposing the hash */
   public verifyRawPassword(plain: string, compareFn: (p: string, h: string) => boolean): boolean {
     if (!this.password) return false;
     return compareFn(plain, this.password);
   }
 }
 
-// ─── UNIT 4: CLUB ENTITY SUBCLASS ─────────────────────────────────────────────
+// ─── CLUB ENTITY ──────────────────────────────────────────────────────────────
 
-/**
- * UNIT 4: Concrete Derived Class (Hierarchical Inheritance from BaseEntity)
- */
 export class ClubEntity extends BaseEntity {
   public name: string;
   public slug: string;
@@ -387,13 +358,10 @@ export class ClubEntity extends BaseEntity {
   }
 }
 
-// ─── UNIT 4: REGISTRATION ENTITY SUBCLASS ─────────────────────────────────────
+// ─── REGISTRATION ENTITY ──────────────────────────────────────────────────────
 
 export type RegistrationStatusType = 'REGISTERED' | 'ATTENDED' | 'CANCELLED';
 
-/**
- * UNIT 4: RegistrationEntity Subclass
- */
 export class RegistrationEntity extends BaseEntity {
   public readonly eventId: string;
   public readonly userId: string;
@@ -437,20 +405,12 @@ export class RegistrationEntity extends BaseEntity {
     this.status = 'CANCELLED';
     this.touch();
   }
-
-  public isConfirmed(): boolean {
-    return this.status === 'REGISTERED' || this.status === 'ATTENDED';
-  }
 }
 
-// ─── UNIT 4: PERMISSION LETTER ENTITY SUBCLASS ────────────────────────────────
+// ─── PERMISSION LETTER ENTITY ─────────────────────────────────────────────────
 
-/**
- * UNIT 4: PermissionLetterEntity Subclass
- * Encapsulates cryptographic permission token generation for campus administration.
- */
 export class PermissionLetterEntity extends BaseEntity {
-  public static readonly TOKEN_PREFIX = 'VITC';
+  public static readonly TOKEN_PREFIX: string = 'VITC';
 
   public readonly eventId: string;
   public readonly issuedById: string;
@@ -500,14 +460,9 @@ export class PermissionLetterEntity extends BaseEntity {
   }
 }
 
-// ─── UNIT 2 & 3: RATE LIMITER CLASS ───────────────────────────────────────────
+// ─── RATE LIMITER ─────────────────────────────────────────────────────────────
 
-/**
- * UNIT 2: Class with Private Static Invariant State
- * UNIT 3: Destructor Cleanup Pattern (purging expired timestamps)
- */
 export class RateLimiter {
-  /** UNIT 2: Private Static Member (singleton store across instances) */
   private static store = new Map<string, { count: number; resetTime: number }>();
   private readonly limit: number;
   private readonly windowMs: number;
@@ -540,7 +495,7 @@ export class RateLimiter {
     return Math.max(0, this.limit - record.count);
   }
 
-  /** UNIT 3: Destructor Cleanup Method to prevent memory leaks */
+  /** Purges expired entries — destructor / memory recovery pattern */
   public cleanup(): void {
     const now = Date.now();
     for (const [key, record] of RateLimiter.store.entries()) {
@@ -555,12 +510,8 @@ export class RateLimiter {
   }
 }
 
-// ─── UNIT 6: GENERIC ENTITY COLLECTION (OBJECT ARRAYS & GENERICS) ─────────────
+// ─── GENERIC ENTITY COLLECTION ────────────────────────────────────────────────
 
-/**
- * UNIT 6: Generic Programming (Generics: T extends BaseEntity)
- * UNIT 2: Object Arrays — encapsulates array of domain objects with query methods.
- */
 export class EntityCollection<T extends BaseEntity> {
   private items: T[] = [];
 
@@ -599,10 +550,7 @@ export class EntityCollection<T extends BaseEntity> {
     return this.items.length;
   }
 
-  /**
-   * UNIT 4: Polymorphic Batch Validation
-   * Calls the polymorphic validate() method on every item through the base pointer.
-   */
+  /** Polymorphic batch validation — calls the overridden validate() on each item */
   public validateAll(): boolean {
     return this.items.every(item => item.validate());
   }
@@ -612,27 +560,64 @@ export class EntityCollection<T extends BaseEntity> {
   }
 }
 
-// ─── UNIT 5: STREAM & FILE SERIALIZATION UTILITY ──────────────────────────────
+// ─── FILE STREAM OPERATIONS ───────────────────────────────────────────────────
 
-/**
- * UNIT 5: Stream & File Handling
- * Provides formatters to serialize/deserialize domain models into CSV and JSON streams.
- */
+export type FileModeType = 'READ' | 'WRITE' | 'APPEND' | 'READ_WRITE';
+
+export class FileStreamManager {
+  private filePointer: number = 0;
+  private mode: FileModeType;
+  private buffer: string[] = [];
+
+  constructor(mode: FileModeType = 'READ_WRITE') {
+    this.mode = mode;
+  }
+
+  public open(initialContent: string = ''): void {
+    this.buffer = initialContent ? initialContent.split('\n') : [];
+    this.filePointer = this.mode === 'APPEND' ? this.buffer.length : 0;
+  }
+
+  public writeLine(line: string): void {
+    if (this.mode === 'READ') {
+      throw new FileStreamException('Cannot write to file opened in READ mode.');
+    }
+    this.buffer.push(line);
+    this.filePointer++;
+  }
+
+  public readLine(): string | null {
+    if (this.filePointer >= this.buffer.length) {
+      return null; // EOF
+    }
+    return this.buffer[this.filePointer++];
+  }
+
+  public seek(position: number): void {
+    this.filePointer = Math.max(0, Math.min(position, this.buffer.length));
+  }
+
+  public getPointer(): number {
+    return this.filePointer;
+  }
+
+  public close(): string {
+    const content = this.buffer.join('\n');
+    this.filePointer = 0;
+    return content;
+  }
+}
+
 export class StreamSerializer {
-  /**
-   * Serializes an array of EventEntity objects into a CSV stream
-   */
   public static toCSV(events: EventEntity[]): string {
     const header = 'id,title,date,time,venue,capacity,status,clubId\n';
-    const rows = events.map(e =>
-      `"${e.id}","${e.title.replace(/"/g, '""')}","${e.date.toISOString()}","${e.time}","${e.venue}","${e.capacity}","${e.status}","${e.clubId}"`
+    const rows = events.map(
+      e =>
+        `"${e.id}","${e.title.replace(/"/g, '""')}","${e.date.toISOString()}","${e.time}","${e.venue}","${e.capacity}","${e.status}","${e.clubId}"`
     );
     return header + rows.join('\n');
   }
 
-  /**
-   * Parses CSV text stream into partial EventEntity data records
-   */
   public static fromCSV(csvText: string): Array<Partial<EventEntity>> {
     const lines = csvText.trim().split(/\r?\n/);
     if (lines.length <= 1) return [];
@@ -656,20 +641,13 @@ export class StreamSerializer {
     return records;
   }
 
-  /**
-   * Formats a collection of BaseEntity objects into a formatted JSON stream
-   */
   public static toJSONStream(entities: BaseEntity[]): string {
     return JSON.stringify(entities.map(e => e.toJSON()), null, 2);
   }
 }
 
-// ─── UNIT 6: CUSTOM EXCEPTION HIERARCHY ───────────────────────────────────────
+// ─── EXCEPTION HIERARCHY ──────────────────────────────────────────────────────
 
-/**
- * UNIT 6: Custom Exception Hierarchy
- * Base Domain Exception inheriting from standard Error.
- */
 export class DomainException extends Error {
   public readonly timestamp: Date;
 
@@ -722,6 +700,13 @@ export class NotFoundException extends DomainException {
   }
 }
 
+export class FileStreamException extends DomainException {
+  constructor(message: string) {
+    super(`File Stream Error: ${message}`);
+    this.name = 'FileStreamException';
+  }
+}
+
 export class DuplicateRegistrationException extends DomainException {
   constructor(userId: string, eventId: string) {
     super(`User "${userId}" is already registered for event "${eventId}".`);
@@ -729,11 +714,8 @@ export class DuplicateRegistrationException extends DomainException {
   }
 }
 
-// ─── UNIT 4 & 6: INTERFACE CONTRACTS (S.O.L.I.D.) ─────────────────────────────
+// ─── INTERFACES & SOLID CONTRACTS ────────────────────────────────────────────
 
-/**
- * Interface Segregation & Dependency Inversion (S.O.L.I.D.)
- */
 export interface IAuthService {
   authorize(email: string, password: string): Promise<UserEntity | null>;
   hashPassword(plain: string): Promise<string>;
@@ -753,20 +735,14 @@ export interface IRepository<T extends BaseEntity> {
   delete(id: string): Promise<boolean>;
 }
 
-/**
- * Generic Action Response (Unit 6: Generic Programming)
- */
 export interface ActionResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// ─── DOMAIN UTILITY FUNCTIONS ─────────────────────────────────────────────────
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
 
-/**
- * Robust date parser supporting DD-MM-YYYY, YYYY-MM-DD, or ISO strings
- */
 export function parseDateFlexible(dateInput: string | Date): Date {
   if (dateInput instanceof Date) return dateInput;
   if (!dateInput) return new Date();
@@ -786,9 +762,6 @@ export function parseDateFlexible(dateInput: string | Date): Date {
   return new Date();
 }
 
-/**
- * Generates URL-friendly slugs
- */
 export function slugify(text: string): string {
   return text
     .toString()
@@ -799,15 +772,21 @@ export function slugify(text: string): string {
     .replace(/--+/g, '-');
 }
 
-/**
- * Generic Safe Execution Wrapper (Unit 6: Exception Handling)
- */
+/** Generic safe execution wrapper — simulates multiple catch handlers */
 export async function safeExecute<T>(action: () => Promise<T>): Promise<ActionResponse<T>> {
   try {
     const data = await action();
     return { success: true, data };
   } catch (error: any) {
-    console.error('[safeExecute Caught Domain Error]:', error);
+    if (error instanceof CapacityExceededException) {
+      return { success: false, error: `[Capacity Error]: ${error.message}` };
+    }
+    if (error instanceof ValidationException) {
+      return { success: false, error: `[Validation Error]: ${error.message}` };
+    }
+    if (error instanceof UnauthorizedException) {
+      return { success: false, error: `[Auth Error]: ${error.message}` };
+    }
     return {
       success: false,
       error: error?.message || 'An unexpected domain error occurred.',

@@ -28,8 +28,7 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
     notFound();
   }
 
-  // ── UNIT 2, 3, 4: OOP Domain Object instantiation ──────────────────────
-  // EventEntity (Unit 4: extends BaseEntity), constructor with defaults (Unit 3)
+  // Domain Object instantiation
   const domainEvent = new EventEntity({
     id: event.id,
     title: event.title,
@@ -39,13 +38,11 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
     status: event.status,
     clubId: event.clubId,
   });
-  // Unit 2: Calling encapsulated domain methods
   const registrationCount = event._count?.registrations ?? (event.registeredCount ?? 0);
-  const remainingSpots = domainEvent.getRemainingCapacity(registrationCount); // Unit 2: encapsulated method
-  const isUpcoming      = domainEvent.isUpcoming();                          // Unit 2: business logic
-  const isApproved      = domainEvent.isApproved();                          // Unit 4: status check
-  const isFull          = domainEvent.isFull(registrationCount);             // Unit 4: overriding
-  // ── End OOP Domain Object ─────────────────────────────────────────────
+  const remainingSpots = domainEvent.getRemainingCapacity(registrationCount);
+  const isUpcoming      = domainEvent.isUpcoming();
+  const isApproved      = domainEvent.isApproved();
+  const isFull          = domainEvent.isFull(registrationCount);
 
   const handleRegister = async () => {
     if (!user) {
@@ -141,7 +138,7 @@ export default function EventDetailsPage(props: { params: Promise<{ id: string }
               </div>
 
               <div className="mt-8 pt-8 border-t border-slate-100 dark:border-white/10">
-                {/* ── OOP Domain Metrics Panel (Unit 2, 4) ── */}
+                {/* Domain Metrics Panel */}
                 <div className="mb-5 rounded-xl border border-blue-200 dark:border-cyan-500/30 bg-blue-50 dark:bg-cyan-500/10 p-4 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-cyan-400 uppercase tracking-wider mb-1">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-cyan-400"></span>

@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from '@/lib/db';
-import { ClubEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
+import { ClubEntity, EntityCollection } from '@/lib/domain';
 
 function getPrisma() {
   return prisma;
@@ -19,7 +19,7 @@ export async function getClubs() {
       orderBy: { name: 'asc' }
     });
 
-    // Unit 4 & 6: Instantiate generic EntityCollection<ClubEntity>
+    // Domain collection with batch validation
     const clubCollection = new EntityCollection<ClubEntity>(
       clubs.map(c => new ClubEntity({
         id: c.id,
@@ -35,7 +35,6 @@ export async function getClubs() {
         isActive: c.isActive,
       }))
     );
-    // Polymorphic batch validation (Unit 4)
     clubCollection.validateAll();
 
     return clubs;

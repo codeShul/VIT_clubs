@@ -8,9 +8,12 @@ import {
   EventEntity, 
   PermissionLetterEntity,
   EntityCollection,
+  FileStreamManager,
+  StreamSerializer,
   ValidationException, 
   CapacityExceededException, 
-  UnauthorizedException 
+  UnauthorizedException,
+  IDomainMessage
 } from '@/lib/domain';
 
 function getPrisma() {
@@ -29,7 +32,7 @@ export async function getEvents() {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Unit 6: Generic EntityCollection for domain validation across object arrays
+    // Domain validation across object arrays using generic EntityCollection
     const eventCollection = new EntityCollection<EventEntity>(
       events.map(e => new EventEntity({
         id: e.id,
@@ -46,6 +49,19 @@ export async function getEvents() {
       }))
     );
     eventCollection.validateAll();
+
+    // File Stream Operations: FileStreamManager manages sequential I/O (open → write → read → close)
+    // StreamSerializer produces serialized output from domain entities
+    const stream = new FileStreamManager('WRITE');
+    stream.open();
+    const previewEntities = eventCollection.all().slice(0, 3);
+    previewEntities.forEach(e => {
+      stream.writeLine(`[EVENT] id=${e.id} | title="${e.title}" | status=${e.status} | ptr=${stream.getPointer()}`);
+    });
+    const csvSnapshot = StreamSerializer.toCSV(previewEntities);
+    stream.writeLine(`[CSV_SNAPSHOT] ${csvSnapshot.split('\n')[0]}`); // Write CSV header as audit line
+    const auditLog = stream.close(); // Flush buffer → returns full content string
+    console.log('[FileStream] Audit log written:\n', auditLog);
 
     return events;
   } catch (error) {
@@ -112,9 +128,7 @@ export async function createEvent(data: any) {
       }
     }
 
-    // ── UNIT 2, 3, 4: OOP Domain Validation ──────────────────────────────
-    // Instantiate EventEntity (Unit 4: Hierarchical Inheritance from BaseEntity)
-    // Constructor uses default arguments (Unit 3), validate() is polymorphic (Unit 4)
+    // Domain Validation via EventEntity model
     const domainEvent = new EventEntity({
       id: 'pending-' + Date.now(),
       title: validatedData.title,
@@ -127,15 +141,12 @@ export async function createEvent(data: any) {
       clubId: targetClubId,
     });
 
-    // Unit 4: Runtime Polymorphism — validate() is overridden in EventEntity
     if (!domainEvent.validate()) {
-      // Unit 6: Throw custom domain exception
       throw new ValidationException(
         `Event "${validatedData.title}" failed domain validation. ` +
         `Capacity must be between 1 and ${EventEntity.MAX_CAPACITY}.`
       );
     }
-    // ── End OOP Domain Validation ─────────────────────────────────────────
 
     const event = await prisma.event.create({
       data: {
@@ -174,7 +185,7 @@ export async function approveEvent(eventId: string, superAdminId: string) {
       data: { status: 'APPROVED' }
     });
 
-    // 2. Generate Permission Letter via Domain Model (Unit 4: PermissionLetterEntity)
+    // 2. Generate Permission Letter via PermissionLetterEntity
     const token = PermissionLetterEntity.generateToken();
     await prisma.permissionLetter.create({
       data: {
@@ -183,6 +194,22 @@ export async function approveEvent(eventId: string, superAdminId: string) {
         token
       }
     });
+
+    // Domain message passing: notify the EventEntity of approval status change
+    const approvedDomainEvent = new EventEntity({
+      id: event.id, title: event.title, date: event.date,
+      capacity: event.capacity, status: 'APPROVED', clubId: event.clubId,
+      venue: event.venue, time: event.time,
+    });
+    const approvalMessage: IDomainMessage = {
+      senderId: session.user.id,
+      recipientId: event.id,
+      action: 'EVENT_APPROVED',
+      payload: { token, issuedBy: session.user.email },
+      timestamp: new Date(),
+    };
+    approvedDomainEvent.receiveMessage(approvalMessage);
+    console.log(`[MessagePassing] Event "${event.title}" received approval message.`);
 
     return { success: true, event };
   } catch (error) {
@@ -204,6 +231,23 @@ export async function rejectEvent(eventId: string) {
       where: { id: eventId },
       data: { status: 'REJECTED' }
     });
+
+    // Domain message passing: notify EventEntity of rejection
+    const rejectedDomainEvent = new EventEntity({
+      id: event.id, title: event.title, date: event.date,
+      capacity: event.capacity, status: 'REJECTED', clubId: event.clubId,
+      venue: event.venue, time: event.time,
+    });
+    const rejectionMessage: IDomainMessage = {
+      senderId: session.user.id,
+      recipientId: event.id,
+      action: 'EVENT_REJECTED',
+      payload: { reason: 'Rejected by super admin', rejectedBy: session.user.email },
+      timestamp: new Date(),
+    };
+    rejectedDomainEvent.receiveMessage(rejectionMessage);
+    console.log(`[MessagePassing] Event "${event.title}" received rejection message.`);
+
     return { success: true, event };
   } catch (error) {
     console.error("Failed to reject event:", error);
@@ -270,8 +314,7 @@ export async function registerForEvent(eventId: string, userId: string) {
     
     if (!event) return { success: false, error: 'Event not found' };
 
-    // ── UNIT 4, 6: OOP Capacity Check via EventEntity ─────────────────────
-    // Instantiate domain object (Unit 4: Inheritance, Unit 3: Constructor)
+    // Domain Capacity Check via EventEntity
     const domainEvent = new EventEntity({
       id: event.id,
       title: event.title,
@@ -282,12 +325,9 @@ export async function registerForEvent(eventId: string, userId: string) {
       clubId: event.clubId,
     });
 
-    // Unit 4: Polymorphic method call — isFull() checks business capacity rule
     if (domainEvent.isFull(event._count.registrations)) {
-      // Unit 6: Custom exception hierarchy — CapacityExceededException extends DomainException
       throw new CapacityExceededException(domainEvent.capacity);
     }
-    // ── End OOP Capacity Check ─────────────────────────────────────────────
 
     const registration = await prisma.registration.create({
       data: {
@@ -300,7 +340,6 @@ export async function registerForEvent(eventId: string, userId: string) {
     return { success: true, registration };
   } catch (error: any) {
     console.error("Registration failed:", error);
-    // Unit 6: Structured exception handling — surface domain error messages cleanly
     return { success: false, error: error?.message || 'Failed to register for event' };
   }
 }

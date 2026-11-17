@@ -9,7 +9,7 @@ import { Users, CalendarDays, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
-import { EventEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
+import { EventEntity, EntityCollection } from '@/lib/domain';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -30,8 +30,7 @@ export default function AdminDashboard() {
 
   const clubEvents = events.filter(e => e.clubId === myClub.id);
 
-  // ── UNIT 4 & 6: OOP Stats using Generic EntityCollection<EventEntity> ─────
-  // Encapsulates object array, calls polymorphic isUpcoming() and isApproved()
+  // Domain Stats using EntityCollection<EventEntity>
   const eventCollection = new EntityCollection<EventEntity>(
     clubEvents.map(e => new EventEntity({
       id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA',
@@ -40,7 +39,6 @@ export default function AdminDashboard() {
   );
   const upcomingEvents = eventCollection.filter(e => e.isUpcoming()).all();
   const approvedEvents = eventCollection.filter(e => e.isApproved()).all();
-  // ── End OOP stats ──────────────────────────────────────────────────────
 
   const STATS = [
     { label: 'Total Members', value: myClub.members?.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -94,24 +92,22 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* ── OOP Domain Model Panel (Unit 2, 3, 4, 6) ─────────────────────────── */}
+      {/* Domain Model Panel */}
       <Card className="bg-blue-500/5 border-blue-500/20 backdrop-blur-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
             <span className="inline-block h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
-            OOP Domain Model — EventEntity Analytics
+            Domain Model — EventEntity Analytics
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {clubEvents.slice(0, 4).map(e => {
-              // Unit 3 & 4: Constructor chaining + polymorphic method calls
               const de = new EventEntity({ id: e.id, title: e.title, date: e.date, venue: e.venue || 'TBA', capacity: e.capacity, status: e.status, clubId: e.clubId });
               const reg = e._count?.registrations ?? 0;
               return (
                 <div key={e.id} className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-1">
                   <div className="text-xs text-muted-foreground font-medium truncate">{e.title}</div>
-                  {/* Unit 2: calling encapsulated getRemainingCapacity() */}
                   <div className="text-lg font-bold text-blue-400">{de.getRemainingCapacity(reg)}</div>
                   <div className="text-[10px] text-muted-foreground">spots remaining</div>
                   <div className={`text-[10px] font-bold mt-1 ${de.isUpcoming() ? 'text-emerald-400' : 'text-slate-500'}`}>

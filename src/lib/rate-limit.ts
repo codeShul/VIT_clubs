@@ -8,13 +8,12 @@
  */
 import { RateLimiter } from './domain';
 
-// Singleton instances per use-case (Object Creation — Unit 2)
+// Singleton instances per use-case
 const registrationLimiter = new RateLimiter(5, 60_000);  // 5 req/min
 const loginLimiter = new RateLimiter(10, 60_000);         // 10 req/min
 
 /**
- * Legacy function wrapper — preserved for backwards compatibility with actions/events.ts
- * Demonstrates Method Overloading pattern (Unit 2)
+ * Function wrapper — preserved for backwards compatibility with actions/events.ts
  */
 export function rateLimit(
   identifier: string,

@@ -9,7 +9,7 @@ import { Search, Calendar, MapPin, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { EventEntity, EntityCollection } from '@/lib/domain'; // Unit 4 & 6: OOP Domain Core
+import { EventEntity, EntityCollection } from '@/lib/domain';
 
 const container = {
   hidden: { opacity: 0 },
@@ -27,8 +27,7 @@ const item = {
 export default function EventsPage() {
   const { events } = useEvents();
 
-  // ── UNIT 4 & 6: Generic EntityCollection<EventEntity> Filtering ─────────
-  // Instantiates generic collection of EventEntity objects, filters polymorphically
+  // Generic EntityCollection filtering with encapsulated member methods
   const eventCollection = new EntityCollection<EventEntity>(
     events.map(e => new EventEntity({
       id: e.id,
@@ -44,11 +43,9 @@ export default function EventsPage() {
       squareImageUrl: e.squareImageUrl,
     }))
   );
-  // Unit 2 & 4: Uses encapsulated isApproved() & isUpcoming() member methods
   const approvedEvents = eventCollection
     .filter(e => e.isApproved() && e.isUpcoming())
     .all();
-  // ── End OOP filtering ──────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#05050A] pt-12 pb-24">
@@ -90,15 +87,14 @@ export default function EventsPage() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {approvedEvents.map(event => {
-            // Unit 2, 3: Instantiate domain object per event (encapsulation + constructor)
             const domainEvent = new EventEntity({
               id: event.id, title: event.title, date: event.date,
               venue: event.venue || 'TBA', capacity: event.capacity,
               status: event.status, clubId: event.clubId,
             });
             const regCount      = event._count?.registrations ?? 0;
-            const remaining     = domainEvent.getRemainingCapacity(regCount); // Unit 2: method call
-            const full          = domainEvent.isFull(regCount);              // Unit 4: overridden method
+            const remaining     = domainEvent.getRemainingCapacity(regCount);
+            const full          = domainEvent.isFull(regCount);
 
             return (
             <motion.div key={event.id} variants={item}>

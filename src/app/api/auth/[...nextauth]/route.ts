@@ -2,7 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { UserEntity } from "@/lib/domain"; // Unit 4: OOP domain import
+import { UserEntity } from "@/lib/domain";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -27,8 +27,6 @@ export const authOptions: NextAuthOptions = {
 
         if (!user.password) {
           if (credentials.password === 'mock') {
-            // ── UNIT 2, 3, 4: UserEntity instantiation for auth ────────────────
-            // Constructor with default args (Unit 3), private password field (Unit 2)
             const userEntity = new UserEntity({
               id: user.id,
               name: user.name,
@@ -38,10 +36,8 @@ export const authOptions: NextAuthOptions = {
               year: user.year || '',
               branch: user.branch || '',
             });
-            // Unit 4: Polymorphic validate() — overridden in UserEntity
-            console.log(`[OOP] UserEntity.validate() = ${userEntity.validate()} for ${user.email}`);
-            console.log(`[OOP] UserEntity.isAdmin()  = ${userEntity.isAdmin()}, isSuperAdmin() = ${userEntity.isSuperAdmin()}`);
-            // ── End OOP ───────────────────────────────────────────────────────
+            console.log(`[Auth] UserEntity.validate() = ${userEntity.validate()} for ${user.email}`);
+            console.log(`[Auth] UserEntity.isAdmin()  = ${userEntity.isAdmin()}, isSuperAdmin() = ${userEntity.isSuperAdmin()}`);
             return {
               id: user.id,
               email: user.email,
