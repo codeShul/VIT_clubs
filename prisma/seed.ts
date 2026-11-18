@@ -2,7 +2,15 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { config } from 'dotenv';
-import { MOCK_USERS, MOCK_CLUBS, MOCK_EVENTS, MOCK_REGISTRATIONS, MOCK_MEMBERSHIPS, MOCK_PERMISSION_LETTERS } from '../src/lib/mock-data';
+import bcrypt from 'bcryptjs';
+import { 
+  MOCK_USERS, 
+  MOCK_CLUBS, 
+  MOCK_EVENTS, 
+  MOCK_REGISTRATIONS, 
+  MOCK_MEMBERSHIPS, 
+  MOCK_PERMISSION_LETTERS 
+} from '../src/lib/mock-data';
 
 config();
 
@@ -13,7 +21,9 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('Start seeding...');
 
-  // 1. Seed Users
+  const defaultPasswordHash = bcrypt.hashSync('password123', 10);
+
+  // 1. Seed Users (Safely handle optional string types)
   for (const mockUser of MOCK_USERS) {
     const userRole = mockUser.role === 'super-admin' ? 'SUPER_ADMIN' 
                    : mockUser.role === 'admin' ? 'ADMIN' 
@@ -21,23 +31,30 @@ async function main() {
     
     await prisma.user.upsert({
       where: { email: mockUser.email },
-      update: {},
+      update: {
+        name: mockUser.name,
+        role: userRole,
+        regNo: mockUser.regNo || 'VIT2024001',
+        year: String(mockUser.year || '3rd Year'),
+        branch: mockUser.branch || 'Computer Engineering',
+        avatarUrl: mockUser.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
+      },
       create: {
         id: mockUser.id,
         email: mockUser.email,
         name: mockUser.name,
         role: userRole,
-        regNo: mockUser.regNo,
-        year: mockUser.year,
-        branch: mockUser.branch,
-        avatarUrl: mockUser.avatarUrl,
+        regNo: mockUser.regNo || 'VIT2024001',
+        year: String(mockUser.year || '3rd Year'),
+        branch: mockUser.branch || 'Computer Engineering',
+        avatarUrl: mockUser.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
+        password: defaultPasswordHash,
       }
     });
   }
   console.log('Users seeded.');
 
   // 2. Seed Clubs
-  // Assign admin users as coordinators for their respective clubs
   const clubCoordinatorMap: Record<string, string> = {
     'club-5': 'user-2', // Riya Desai -> GDSC
     'club-2': 'user-3', // Priya Kapoor -> EDC
@@ -47,13 +64,21 @@ async function main() {
     const coordinatorId = clubCoordinatorMap[mockClub.id] || 'user-1';
     await prisma.club.upsert({
       where: { slug: mockClub.slug },
-      update: {},
+      update: {
+        name: mockClub.name,
+        description: mockClub.description,
+        domain: mockClub.domain,
+        logoUrl: mockClub.logoUrl,
+        coverUrl: mockClub.coverUrl,
+        facultyCoordinatorId: coordinatorId,
+        isFeatured: mockClub.isFeatured,
+      },
       create: {
         id: mockClub.id,
         name: mockClub.name,
         slug: mockClub.slug,
         description: mockClub.description,
-        vision: mockClub.description, // fallback
+        vision: mockClub.description,
         domain: mockClub.domain,
         logoUrl: mockClub.logoUrl,
         coverUrl: mockClub.coverUrl,
@@ -65,18 +90,25 @@ async function main() {
   }
   console.log('Clubs seeded.');
 
-  // 2b. Seed admin memberships (so login can resolve clubId)
+  // 2b. Seed admin memberships (LEAD + APPROVED)
   const adminMemberships = [
     { id: 'mem-admin-2', userId: 'user-2', clubId: 'club-5', role: 'LEAD' as const, status: 'APPROVED' as const },
     { id: 'mem-admin-3', userId: 'user-3', clubId: 'club-2', role: 'LEAD' as const, status: 'APPROVED' as const },
   ];
   for (const am of adminMemberships) {
-    const existing = await prisma.membership.findFirst({
-      where: { userId: am.userId, clubId: am.clubId }
+    await prisma.membership.upsert({
+      where: {
+        userId_clubId: {
+          userId: am.userId,
+          clubId: am.clubId
+        }
+      },
+      update: {
+        role: 'LEAD',
+        status: 'APPROVED',
+      },
+      create: am
     });
-    if (!existing) {
-      await prisma.membership.create({ data: am });
-    }
   }
   console.log('Admin memberships seeded.');
 
@@ -87,23 +119,25 @@ async function main() {
       approved: 'APPROVED',
       rejected: 'REJECTED'
     };
-    
-    // Check if membership already exists to avoid unique constraint error
-    const existing = await prisma.membership.findFirst({
-      where: { userId: req.userId, clubId: req.clubId }
-    });
 
-    if (!existing) {
-      await prisma.membership.create({
-        data: {
-          id: req.id,
+    await prisma.membership.upsert({
+      where: {
+        userId_clubId: {
           userId: req.userId,
-          clubId: req.clubId,
-          role: 'MEMBER',
-          status: statusMap[req.status],
+          clubId: req.clubId
         }
-      });
-    }
+      },
+      update: {
+        status: statusMap[req.status] || 'PENDING',
+      },
+      create: {
+        id: req.id,
+        userId: req.userId,
+        clubId: req.clubId,
+        role: 'MEMBER',
+        status: statusMap[req.status] || 'PENDING',
+      }
+    });
   }
   console.log('Memberships seeded.');
 
@@ -116,14 +150,32 @@ async function main() {
       rejected: 'REJECTED'
     };
     
-    // Parse Date for Prisma
-    const [year, month, day] = mockEvent.date.split('-');
-    const [hours, minutes] = mockEvent.time.split(':');
-    const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+    const [year, month, day] = (mockEvent.date || '2026-09-01').split('-');
+    const [hours, minutes] = (mockEvent.time || '10:00').split(':');
+    const parsedDate = new Date(
+      parseInt(year || '2026', 10),
+      parseInt(month || '9', 10) - 1,
+      parseInt(day || '1', 10),
+      parseInt(hours || '10', 10),
+      parseInt(minutes || '0', 10)
+    );
+
+    const bannerImage = mockEvent.imageUrl || mockEvent.bannerImageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87';
+    const squareImage = mockEvent.imageUrl || mockEvent.squareImageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87';
 
     await prisma.event.upsert({
       where: { id: mockEvent.id },
-      update: {},
+      update: {
+        title: mockEvent.title,
+        description: mockEvent.description,
+        date: parsedDate,
+        time: mockEvent.time,
+        venue: mockEvent.venue,
+        bannerImageUrl: bannerImage,
+        squareImageUrl: squareImage,
+        capacity: mockEvent.capacity,
+        status: statusMap[mockEvent.status] || 'DRAFT',
+      },
       create: {
         id: mockEvent.id,
         title: mockEvent.title,
@@ -131,21 +183,24 @@ async function main() {
         date: parsedDate,
         time: mockEvent.time,
         venue: mockEvent.venue,
-        bannerImageUrl: mockEvent.imageUrl,
-        squareImageUrl: mockEvent.imageUrl,
+        bannerImageUrl: bannerImage,
+        squareImageUrl: squareImage,
         capacity: mockEvent.capacity,
-        status: statusMap[mockEvent.status],
+        status: statusMap[mockEvent.status] || 'DRAFT',
         clubId: mockEvent.clubId,
       }
     });
   }
   console.log('Events seeded.');
 
-  // 5. Seed Permission Letters
+  // 5. Seed Permission Letters (upsert by unique token)
   for (const letter of MOCK_PERMISSION_LETTERS) {
     await prisma.permissionLetter.upsert({
       where: { token: letter.token },
-      update: {},
+      update: {
+        eventId: letter.eventId,
+        issuedById: 'user-1',
+      },
       create: {
         id: `pl-${letter.eventId}`,
         eventId: letter.eventId,
@@ -156,22 +211,25 @@ async function main() {
   }
   console.log('Permission letters seeded.');
 
-  // 6. Seed Registrations
+  // 6. Seed Registrations (upsert by unique compound key userId_eventId)
   for (const reg of MOCK_REGISTRATIONS) {
-    const existing = await prisma.registration.findFirst({
-      where: { userId: reg.userId, eventId: reg.eventId }
-    });
-
-    if (!existing) {
-      await prisma.registration.create({
-        data: {
-          id: reg.id,
+    await prisma.registration.upsert({
+      where: {
+        userId_eventId: {
           userId: reg.userId,
-          eventId: reg.eventId,
-          status: 'REGISTERED'
+          eventId: reg.eventId
         }
-      });
-    }
+      },
+      update: {
+        status: 'REGISTERED'
+      },
+      create: {
+        id: reg.id,
+        userId: reg.userId,
+        eventId: reg.eventId,
+        status: 'REGISTERED'
+      }
+    });
   }
   console.log('Registrations seeded.');
   console.log('Seeding finished.');
@@ -184,4 +242,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

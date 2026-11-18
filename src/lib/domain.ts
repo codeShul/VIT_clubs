@@ -560,92 +560,6 @@ export class EntityCollection<T extends BaseEntity> {
   }
 }
 
-// ─── FILE STREAM OPERATIONS ───────────────────────────────────────────────────
-
-export type FileModeType = 'READ' | 'WRITE' | 'APPEND' | 'READ_WRITE';
-
-export class FileStreamManager {
-  private filePointer: number = 0;
-  private mode: FileModeType;
-  private buffer: string[] = [];
-
-  constructor(mode: FileModeType = 'READ_WRITE') {
-    this.mode = mode;
-  }
-
-  public open(initialContent: string = ''): void {
-    this.buffer = initialContent ? initialContent.split('\n') : [];
-    this.filePointer = this.mode === 'APPEND' ? this.buffer.length : 0;
-  }
-
-  public writeLine(line: string): void {
-    if (this.mode === 'READ') {
-      throw new FileStreamException('Cannot write to file opened in READ mode.');
-    }
-    this.buffer.push(line);
-    this.filePointer++;
-  }
-
-  public readLine(): string | null {
-    if (this.filePointer >= this.buffer.length) {
-      return null; // EOF
-    }
-    return this.buffer[this.filePointer++];
-  }
-
-  public seek(position: number): void {
-    this.filePointer = Math.max(0, Math.min(position, this.buffer.length));
-  }
-
-  public getPointer(): number {
-    return this.filePointer;
-  }
-
-  public close(): string {
-    const content = this.buffer.join('\n');
-    this.filePointer = 0;
-    return content;
-  }
-}
-
-export class StreamSerializer {
-  public static toCSV(events: EventEntity[]): string {
-    const header = 'id,title,date,time,venue,capacity,status,clubId\n';
-    const rows = events.map(
-      e =>
-        `"${e.id}","${e.title.replace(/"/g, '""')}","${e.date.toISOString()}","${e.time}","${e.venue}","${e.capacity}","${e.status}","${e.clubId}"`
-    );
-    return header + rows.join('\n');
-  }
-
-  public static fromCSV(csvText: string): Array<Partial<EventEntity>> {
-    const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length <= 1) return [];
-
-    const records: Array<Partial<EventEntity>> = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(',').map(s => s.replace(/^"|"$/g, '').trim());
-      if (parts.length >= 7) {
-        records.push({
-          id: parts[0],
-          title: parts[1],
-          date: new Date(parts[2]),
-          time: parts[3],
-          venue: parts[4],
-          capacity: parseInt(parts[5], 10) || 100,
-          status: parts[6],
-          clubId: parts[7] || '',
-        });
-      }
-    }
-    return records;
-  }
-
-  public static toJSONStream(entities: BaseEntity[]): string {
-    return JSON.stringify(entities.map(e => e.toJSON()), null, 2);
-  }
-}
-
 // ─── EXCEPTION HIERARCHY ──────────────────────────────────────────────────────
 
 export class DomainException extends Error {
@@ -697,13 +611,6 @@ export class NotFoundException extends DomainException {
     this.name = 'NotFoundException';
     this.entityType = entityType;
     this.identifier = identifier;
-  }
-}
-
-export class FileStreamException extends DomainException {
-  constructor(message: string) {
-    super(`File Stream Error: ${message}`);
-    this.name = 'FileStreamException';
   }
 }
 

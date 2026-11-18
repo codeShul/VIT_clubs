@@ -33,15 +33,14 @@
 | **Unit 2** | Classes & Objects: Visibility, Encapsulation, Static Members | `EventEntity` (static `MAX_CAPACITY`), `UserEntity` (private `password`), method overloading, `EntityCollection<T>` |
 | **Unit 3** | Constructors & Destructors | Parameterized constructors, default arguments, constructor chaining (`super()`), `RateLimiter.cleanup()` destructor |
 | **Unit 4** | Inheritance & Polymorphism | `BaseEntity → EventEntity/UserEntity/ClubEntity/RegistrationEntity/PermissionLetterEntity`, abstract methods, method overriding, interfaces |
-| **Unit 5** | File Handling & Streams | `FileStreamManager` (open/write/read/seek/close), `StreamSerializer` (CSV/JSON), `FileStreamException` |
 | **Unit 6** | Exception Handling, Generics, SOLID | `DomainException` hierarchy, `EntityCollection<T>` generic, `safeExecute<T>()`, SOLID interfaces |
 
 **Integration into working app files:**
 
 | File | OOP Units Used |
 |------|----------------|
-| `src/lib/domain.ts` | Units 1–6 (core engine) |
-| `src/app/actions/events.ts` | Units 1 (message passing), 2 (EntityCollection), 3 (constructors), 4 (inheritance/polymorphism), 5 (FileStreamManager/StreamSerializer), 6 (exceptions) |
+| `src/lib/domain.ts` | Units 1–4, 6 (core engine) |
+| `src/app/actions/events.ts` | Units 1 (message passing), 2 (EntityCollection), 3 (constructors), 4 (inheritance/polymorphism), 6 (exceptions) |
 | `src/app/actions/clubs.ts` | Units 2, 4, 6 |
 | `src/app/api/auth/[...nextauth]/route.ts` | Units 2, 4 (UserEntity) |
 | `src/app/events/[id]/page.tsx` | Units 3, 4 (EventEntity domain panel) |

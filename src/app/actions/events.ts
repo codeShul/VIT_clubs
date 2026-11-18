@@ -8,8 +8,6 @@ import {
   EventEntity, 
   PermissionLetterEntity,
   EntityCollection,
-  FileStreamManager,
-  StreamSerializer,
   ValidationException, 
   CapacityExceededException, 
   UnauthorizedException,
@@ -49,19 +47,6 @@ export async function getEvents() {
       }))
     );
     eventCollection.validateAll();
-
-    // File Stream Operations: FileStreamManager manages sequential I/O (open → write → read → close)
-    // StreamSerializer produces serialized output from domain entities
-    const stream = new FileStreamManager('WRITE');
-    stream.open();
-    const previewEntities = eventCollection.all().slice(0, 3);
-    previewEntities.forEach(e => {
-      stream.writeLine(`[EVENT] id=${e.id} | title="${e.title}" | status=${e.status} | ptr=${stream.getPointer()}`);
-    });
-    const csvSnapshot = StreamSerializer.toCSV(previewEntities);
-    stream.writeLine(`[CSV_SNAPSHOT] ${csvSnapshot.split('\n')[0]}`); // Write CSV header as audit line
-    const auditLog = stream.close(); // Flush buffer → returns full content string
-    console.log('[FileStream] Audit log written:\n', auditLog);
 
     return events;
   } catch (error) {

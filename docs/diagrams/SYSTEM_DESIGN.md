@@ -355,19 +355,33 @@ The domain model hierarchy implemented in `src/lib/domain.ts`:
 
 ```mermaid
 classDiagram
+    class IDomainMessage~T~ {
+        <<interface>>
+        +String senderId
+        +String recipientId
+        +String action
+        +T payload
+        +Date timestamp
+    }
+
     class BaseEntity {
         <<abstract>>
         +String id
         +Date createdAt
         +Date updatedAt
         +isNew() bool
+        +getAgeInDays() int
+        +touch() void
+        +receiveMessage(IDomainMessage message) bool
         +validate()* bool
         +toJSON()* Record
     }
 
     class EventEntity {
         +String title
+        +String description
         +Date date
+        +String time
         +String venue
         +int capacity
         +String status
@@ -375,6 +389,7 @@ classDiagram
         +MAX_CAPACITY$ int
         +validate() bool
         +toJSON() Record
+        +receiveMessage(IDomainMessage message) bool
         +isUpcoming() bool
         +isApproved() bool
         +isFull(int currentRegistrations) bool
@@ -394,15 +409,17 @@ classDiagram
         +hasRole(String role) bool
         +isSuperAdmin() bool
         +isAdmin() bool
+        +isStudent() bool
         +hasPassword() bool
+        +verifyRawPassword(String plain, Function compareFn) bool
     }
 
     class ClubEntity {
         +String name
         +String slug
+        +String domain
         +String description
         +String vision
-        +String domain
         +String logoUrl
         +String coverUrl
         +String facultyCoordinatorId
@@ -410,7 +427,29 @@ classDiagram
         +bool isActive
         +validate() bool
         +toJSON() Record
-        +canCreateEvent(UserEntity user) bool
+        +canHostEvents() bool
+    }
+
+    class RegistrationEntity {
+        +String eventId
+        +String userId
+        +String status
+        +validate() bool
+        +toJSON() Record
+        +markAttended() void
+        +cancel() void
+    }
+
+    class PermissionLetterEntity {
+        +String eventId
+        +String issuedById
+        +String token
+        +Date expiresAt
+        +TOKEN_PREFIX$ String
+        +generateToken(int year)$ String
+        +validate() bool
+        +toJSON() Record
+        +isExpired() bool
     }
 
     class RateLimiter {
@@ -422,37 +461,43 @@ classDiagram
         +cleanup() void
     }
 
-    class IAuthService {
-        <<interface>>
-        +authorize(String email, String password)* Promise~UserEntity~
-        +hashPassword(String plain)* Promise~String~
-        +comparePassword(String plain, String hash)* Promise~bool~
+    class EntityCollection~T~ {
+        -List~T~ entities
+        +add(T entity) void
+        +all() List~T~
+        +validateAll() bool
+        +filter(Function predicate) List~T~
     }
 
-    class AuthService {
-        -PrismaClient prisma
-        +authorize(String email, String password) Promise~UserEntity~
-        +hashPassword(String plain) Promise~String~
-        +comparePassword(String plain, String hash) Promise~bool~
+    class DomainException {
+        +String message
     }
 
-    class EventService {
-        -PrismaClient prisma
-        -RateLimiter rateLimiter
-        +getEvents() Promise~List~
-        +createEvent(Object data) Promise~Result~
-        +approveEvent(String id, String superAdminId) Promise~Result~
-        +rejectEvent(String id) Promise~Result~
-        +registerForEvent(String eventId, String userId) Promise~Result~
+    class CapacityExceededException {
+        +int maxCapacity
+    }
+
+    class ValidationException {
+    }
+
+    class UnauthorizedException {
     }
 
     BaseEntity <|-- EventEntity : Inheritance
     BaseEntity <|-- UserEntity : Inheritance
     BaseEntity <|-- ClubEntity : Inheritance
-    IAuthService <|.. AuthService : Implements
-    AuthService --> UserEntity : Creates / Authenticates
-    EventService --> EventEntity : Validates & Manages
-    EventService --> RateLimiter : Uses for throttling
+    BaseEntity <|-- RegistrationEntity : Inheritance
+    BaseEntity <|-- PermissionLetterEntity : Inheritance
+    BaseEntity ..> IDomainMessage : receives
+
+    DomainException <|-- CapacityExceededException : Inheritance
+    DomainException <|-- ValidationException : Inheritance
+    DomainException <|-- UnauthorizedException : Inheritance
+
+    EntityCollection~T~ o-- BaseEntity : aggregates
+    EventEntity --> PermissionLetterEntity : generates on approval
+    EventEntity --> RegistrationEntity : registers
+    EventEntity ..> RateLimiter : throttled by
 ```
 
 ---

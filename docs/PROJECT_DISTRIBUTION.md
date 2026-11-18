@@ -79,23 +79,22 @@ flowchart TD
 
 ---
 
-### 👤 Member 3: Database, ORM & File/Stream Persistence Lead
+### 👤 Member 3: Database, ORM & Cloud Persistence Lead
 **Role:** Database & Persistence Engineer  
 **Marking Weightage:** 25 Marks (25%)  
-**Primary Syllabus Units:** **Unit 3** (Constructors & Destructors) & **Unit 5** (File Handling & Streams)
+**Primary Syllabus Units:** **Unit 3** (Constructors, Destructors & Dynamic Object Initialization) & Relational Persistence
 
 #### 1. Syllabus Concepts Covered
 - **Unit 3 — Parameterized Constructors with Default Arguments:** `BaseEntity(id, createdAt ?? new Date(), updatedAt ?? new Date())`.
-- **Unit 3 — Constructor Chaining:** Subclasses use `super(...)` to initialize base properties.
+- **Unit 3 — Constructor Chaining:** Subclasses (`EventEntity`, `ClubEntity`, `UserEntity`) use `super(...)` to initialize base properties.
 - **Unit 3 — Destructor Pattern / Memory Recovery:** `RateLimiter.cleanup()` purges expired timestamp entries to simulate memory recovery (`delete`).
-- **Unit 3 — Dynamic Object Initialization:** Runtime connection pool binding in `src/lib/db.ts`.
-- **Unit 5 — File Handling & Stream Operations:** `FileStreamManager` with file modes (`READ`, `WRITE`, `APPEND`), file pointer manipulation (`seek()`, `getPointer()`), and sequential line reading.
-- **Unit 5 — Stream Serialization:** `StreamSerializer.toCSV()`, `StreamSerializer.fromCSV()`, and `StreamSerializer.toJSONStream()`.
+- **Unit 3 — Dynamic Object Initialization & Singleton Pattern:** Runtime connection pool binding and singleton client caching in `src/lib/db.ts`.
+- **Relational Data Integrity:** Compound constraints (`@@unique([userId, eventId])`), referential keys, and Prisma ORM migrations.
 
 #### 2. Key Files Owned
-- `src/lib/db.ts` (Prisma singleton connection pool)
-- `prisma/schema.prisma` (PostgreSQL relational schema)
-- `src/lib/domain.ts` (`FileStreamManager` & `StreamSerializer`)
+- `src/lib/db.ts` (Prisma singleton connection pool & driver adapter)
+- `prisma/schema.prisma` (PostgreSQL relational schema & constraints)
+- `prisma/seed.ts` (Database idempotent seeding & relation hydration)
 - `docs/diagrams/er-diagram.md` & `docs/diagrams/deployment-topology.md`
 
 ---

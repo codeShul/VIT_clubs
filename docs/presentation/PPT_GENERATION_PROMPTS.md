@@ -88,13 +88,13 @@ Slide 8: OOP Unit 4 — Method Overriding, Polymorphism & Friend Functions
   * Dynamic Dispatch: Calling entity.validate() through a base pointer executes the concrete derived class logic at runtime.
   * Friend Function Equivalent: verifyRawPassword() allows privileged callers (NextAuth/bcrypt) to verify credentials without leaking the private hash.
 
-Slide 9: OOP Unit 5 — File Handling, Stream Operations & File Modes
+Slide 9: Database Architecture — Connection Pooling, ORM & Persistent Relational Model
 - Member Ownership: Member 3 (Database & Persistence Lead)
-- Key Syllabus Concepts:
-  * File Stream Operations: FileStreamManager emulating open(), close(), readLine(), writeLine(), and seek().
-  * File Modes: READ, WRITE, APPEND, READ_WRITE modes with file pointer tracking.
-  * Sequential I/O Streams: StreamSerializer.toCSV() and StreamSerializer.toJSONStream() for event and attendee data.
-  * Error Handling during File Operations: Custom FileStreamException.
+- Key Architectural Concepts:
+  * Connection Pooling: PrismaPg adapter with pg.Pool managing connection lifecycle and transaction pooling via PgBouncer.
+  * Relational Schema Constraints: Multi-model relational schema in schema.prisma with compound unique keys and foreign relations.
+  * Singleton Client Pattern: db.ts preventing connection leaks during execution.
+  * Idempotent Seeding: seed.ts populating relational structures across users, clubs, and events.
 
 Slide 10: OOP Unit 6 — Exception Handling Hierarchy
 - Member Ownership: Member 4 (Server Actions Lead)
