@@ -330,10 +330,10 @@ vercel --prod
 
 | Member | Role | Units Covered |
 |--------|------|---------------|
-| Ansh | Full-Stack Lead, OOP Architecture | Units 1, 3, 5 |
-| Member 2 | Backend & Database | Units 2, 6 |
-| Member 3 | Frontend & UI | Unit 4 |
-| Member 4 | Auth, Security & Deployment | Units 4, 6 |
+| Anshul | Full-Stack Lead, OOP Architecture | Units 1, 3, 5 |
+| Arnavkumar | Backend & Database | Units 2, 6 |
+| Sanskar | Frontend & UI | Unit 4 |
+| Vedant | Auth, Security & Deployment | Units 4, 6 |
 
 > See [`docs/PROJECT_DISTRIBUTION.md`](docs/PROJECT_DISTRIBUTION.md) for detailed work distribution.
 
